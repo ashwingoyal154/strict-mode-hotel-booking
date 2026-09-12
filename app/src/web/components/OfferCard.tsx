@@ -41,32 +41,38 @@ export function OfferCard({ ranked, href, settling = false }: OfferCardProps): J
 
   const body = (
     <>
+      {/*
+        The thumbnail is a sibling of the text column, not a parent of the header
+        only. Nesting it around the header alone indented the name and address by
+        the thumb track while the price and chips stayed at the card's padding —
+        two left edges inside one card, which reads as a broken layout. One track
+        for the image, one for everything else.
+      */}
+      {property.thumbnailUrl !== null ? (
+        <img
+          data-field="thumb"
+          className="offer__thumb"
+          src={property.thumbnailUrl}
+          alt=""
+          loading="lazy"
+        />
+      ) : null}
+
       <div className="offer__head">
-        {property.thumbnailUrl !== null ? (
-          <img
-            data-field="thumb"
-            className="offer__thumb"
-            src={property.thumbnailUrl}
-            alt=""
-            loading="lazy"
-          />
-        ) : null}
-        <div className="offer__headtext">
-          <span data-field="commute" className="offer__commute">
-            {describeCommute(commute)}
+        <span data-field="commute" className="offer__commute">
+          {describeCommute(commute)}
+        </span>
+        {rank > 0 && rankReason.length > 0 ? (
+          <span data-field="rank" className="offer__rank">
+            #{rank} &middot; {rankReason}
           </span>
-          {rank > 0 && rankReason.length > 0 ? (
-            <span data-field="rank" className="offer__rank">
-              #{rank} &middot; {rankReason}
-            </span>
-          ) : null}
-          <h3 data-field="name" className="offer__name">
-            {property.name}
-          </h3>
-          <p data-field="address" className="offer__addr">
-            {property.addressLine}
-          </p>
-        </div>
+        ) : null}
+        <h3 data-field="name" className="offer__name">
+          {property.name}
+        </h3>
+        <p data-field="address" className="offer__addr">
+          {property.addressLine}
+        </p>
       </div>
 
       <div className="offer__money">

@@ -13,22 +13,23 @@
 export function SkeletonCard(): JSX.Element {
   return (
     <div data-testid="skeleton-card" className="offer offer--skeleton" aria-hidden="true">
+      {/* Mirrors OfferCard exactly: the thumb is a sibling in column 1, and the
+          header is a plain block in the text column. */}
+      <div className="offer__thumb" />
+
       <div className="offer__head">
-        <div className="offer__thumb" />
-        <div className="offer__headtext">
-          <span className="offer__commute">
-            <span className="sk-bar sk-bar--commute" />
-          </span>
-          <span className="offer__rank">
-            <span className="sk-bar sk-bar--rank" />
-          </span>
-          <h3 className="offer__name">
-            <span className="sk-bar sk-bar--name" />
-          </h3>
-          <p className="offer__addr">
-            <span className="sk-bar sk-bar--addr" />
-          </p>
-        </div>
+        <span className="offer__commute">
+          <span className="sk-bar sk-bar--commute" />
+        </span>
+        <span className="offer__rank">
+          <span className="sk-bar sk-bar--rank" />
+        </span>
+        <h3 className="offer__name">
+          <span className="sk-bar sk-bar--name" />
+        </h3>
+        <p className="offer__addr">
+          <span className="sk-bar sk-bar--addr" />
+        </p>
       </div>
 
       <div className="offer__money">

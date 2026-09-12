@@ -194,8 +194,14 @@
    list and nothing else.
    ======================================================================= */
 
+/* Two columns: the thumbnail track, then everything else. Every block in the
+   card — header, price, verdict, chips — sits in column 2, so the card has ONE
+   left edge. The track is reserved whether or not a property has a thumbnail, so
+   a streaming list never reflows and the skeleton's square sits exactly where an
+   image will. */
 .offer {
   display: grid;
+  grid-template-columns: 48px 1fr;
   gap: var(--s3);
   padding: var(--s4);
   background: var(--surface);
@@ -210,31 +216,28 @@ a.offer:hover {
   border-color: var(--accent);
 }
 
-/* The thumbnail column is reserved whether or not a property has one, so a
-   streaming list has a single text baseline instead of a ragged left edge, and so
-   the skeleton's square sits exactly where an image will. */
-.offer__head {
-  display: grid;
-  grid-template-columns: 48px 1fr;
-  gap: var(--s3);
-  align-items: start;
+/* Every direct child of .offer lands in the text column by default. */
+.offer > * {
+  grid-column: 2;
+  min-width: 0;
 }
 
+.offer__head {
+  display: grid;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+/* The image is the one thing that claims column 1, top row. */
 .offer__thumb {
   grid-column: 1;
+  grid-row: 1;
   width: 48px;
   height: 48px;
   border-radius: var(--r-sm);
   border: var(--hair) solid var(--rule);
   background: var(--sunk);
   object-fit: cover;
-}
-
-.offer__headtext {
-  grid-column: 2;
-  display: grid;
-  gap: var(--s1);
-  min-width: 0;
 }
 
 .offer__commute {
