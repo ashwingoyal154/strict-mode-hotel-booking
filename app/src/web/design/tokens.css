@@ -1,0 +1,218 @@
+/* Verdict — design tokens. The only place colour, type, space, radius and motion
+   are defined. Components consume var(--…) and never literals. See DESIGN.md. */
+
+:root {
+  /* ---- neutrals: cool-biased greys, hue-shifted toward the pine accent ---- */
+  --ground: #f6f6f3;
+  --surface: #ffffff;
+  --sunk: #efefea;
+  --ink: #15181d;
+  --ink-2: #3e444c;
+  --muted: #6a6f77;
+  --faint: #9aa0a6;
+  --rule: #dfdfd8;
+  --rule-strong: #c9c9c0;
+
+  /* ---- accent: the only interactive colour ---- */
+  --accent: #1c5c58;
+  --accent-hover: #14443f;
+  --accent-ink: #ffffff;
+  --accent-soft: #e2edeb;
+
+  /* ---- verdict semantics: the only other colour in the product ---- */
+  --in: #2c6840;
+  --in-soft: #e3eee5;
+  --over: #8d5a07;
+  --over-soft: #f5ebd8;
+  --blocked: #883026;
+  --blocked-soft: #f3e3e0;
+
+  /* ---- type ---- */
+  --font-display: Archivo, "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-machine: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --t-micro: 10.5px;
+  --t-mono: 12px;
+  --t-small: 13.5px;
+  --t-base: 15.5px;
+  --t-body: 17px;
+  --t-lead: 20px;
+  --t-h3: 22px;
+  --t-h2: 28px;
+  --t-h1: 38px;
+  --t-total: 34px;
+
+  --lh-tight: 1.1;
+  --lh-snug: 1.35;
+  --lh-body: 1.6;
+  --ls-caps: 0.12em;
+  --ls-mono: 0.02em;
+  --ls-display: -0.02em;
+
+  /* ---- space ---- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s7: 32px;
+  --s8: 40px;
+  --s9: 56px;
+  --s10: 72px;
+
+  /* ---- geometry: near-square, hairline, flat ---- */
+  --r-sm: 2px;
+  --r-md: 3px;
+  --hair: 1px;
+  --elev-1: 0 1px 2px rgba(21, 24, 29, 0.06), 0 4px 16px rgba(21, 24, 29, 0.04);
+
+  /* ---- motion ---- */
+  --ease-settle: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-settle: 260ms;
+
+  --gutter: 16px;
+  --measure: 66ch;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #13161a;
+    --surface: #1a1e23;
+    --sunk: #202429;
+    --ink: #e9eae5;
+    --ink-2: #c3c6c2;
+    --muted: #8d9399;
+    --faint: #6f757b;
+    --rule: #2b3036;
+    --rule-strong: #3a4046;
+
+    --accent: #74b8b1;
+    --accent-hover: #8fcbc4;
+    --accent-ink: #0e1413;
+    --accent-soft: #1e2e2d;
+
+    --in: #7fbe90;
+    --in-soft: #1c2a20;
+    --over: #d6a54f;
+    --over-soft: #2b2418;
+    --blocked: #d68c80;
+    --blocked-soft: #2b1d1a;
+
+    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.25);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #13161a;
+  --surface: #1a1e23;
+  --sunk: #202429;
+  --ink: #e9eae5;
+  --ink-2: #c3c6c2;
+  --muted: #8d9399;
+  --faint: #6f757b;
+  --rule: #2b3036;
+  --rule-strong: #3a4046;
+
+  --accent: #74b8b1;
+  --accent-hover: #8fcbc4;
+  --accent-ink: #0e1413;
+  --accent-soft: #1e2e2d;
+
+  --in: #7fbe90;
+  --in-soft: #1c2a20;
+  --over: #d6a54f;
+  --over-soft: #2b2418;
+  --blocked: #d68c80;
+  --blocked-soft: #2b1d1a;
+
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* ---- primitives every screen relies on ---- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Machine voice. Anything the system computed. */
+.m {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Machine voice, label register. */
+.m-label {
+  font-family: var(--font-machine);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Structural voice. */
+.d {
+  font-family: var(--font-display);
+  letter-spacing: var(--ls-display);
+  font-weight: 600;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

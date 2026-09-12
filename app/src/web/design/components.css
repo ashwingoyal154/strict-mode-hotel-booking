@@ -1,0 +1,679 @@
+/* Verdict — the components that carry the language. Tokens only. */
+
+/* =======================================================================
+   AnchorInput
+   One field. Dates beneath as two compact machine-voice controls.
+   ======================================================================= */
+
+.anchor {
+  display: grid;
+  gap: var(--s4);
+}
+
+.anchor__input {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: var(--t-lead);
+  font-weight: 500;
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-snug);
+  background: var(--surface);
+  border: var(--hair) solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  padding: var(--s4);
+  color: var(--ink);
+}
+
+.anchor__input::placeholder {
+  color: var(--faint);
+  font-weight: 400;
+}
+
+.anchor__input:hover {
+  border-color: var(--ink-2);
+}
+
+.anchor__input[aria-invalid="true"] {
+  border-color: var(--blocked);
+}
+
+.anchor__dates {
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.anchor__date {
+  display: grid;
+  gap: var(--s1);
+}
+
+.anchor__nights {
+  padding-bottom: var(--s3);
+  white-space: nowrap;
+}
+
+.anchor__chips {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.anchor-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  color: var(--ink-2);
+  background: var(--surface);
+  border: var(--hair) solid var(--rule);
+  border-radius: var(--r-sm);
+  padding: var(--s2) var(--s3);
+  text-align: left;
+}
+
+.anchor-chip:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+/* =======================================================================
+   SourceMeter
+   A row of hairline segments. Stays visible after settling, as a receipt.
+   ======================================================================= */
+
+.meter {
+  display: grid;
+  gap: var(--s3);
+  border-top: var(--hair) solid var(--rule);
+  border-bottom: var(--hair) solid var(--rule);
+  padding: var(--s3) 0;
+}
+
+.meter__bar {
+  display: flex;
+  gap: var(--s1);
+}
+
+.meter__seg {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--s1);
+  background: var(--sunk);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.meter__seg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(0);
+  background: var(--rule-strong);
+  transition: transform var(--dur-settle) var(--ease-settle);
+}
+
+.meter__seg[data-status="pending"]::after {
+  transform: scaleX(0.18);
+  animation: meter-wait 1.3s var(--ease-settle) infinite;
+}
+
+.meter__seg[data-status="answered"]::after {
+  transform: scaleX(1);
+  background: var(--accent);
+}
+
+.meter__seg[data-status="failed"]::after {
+  transform: scaleX(1);
+  background: var(--blocked);
+}
+
+@keyframes meter-wait {
+  0% {
+    transform: scaleX(0.1);
+  }
+  50% {
+    transform: scaleX(0.55);
+  }
+  100% {
+    transform: scaleX(0.1);
+  }
+}
+
+.meter__status {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.meter__count {
+  color: var(--ink);
+}
+
+.meter__legend {
+  display: flex;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.meter__src {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  font-family: var(--font-machine);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-mono);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter__src[data-status="answered"] {
+  color: var(--ink-2);
+}
+
+.meter__src[data-status="failed"] {
+  color: var(--blocked);
+}
+
+.meter__flag {
+  text-transform: uppercase;
+  letter-spacing: var(--ls-caps);
+}
+
+/* =======================================================================
+   OfferCard + SkeletonCard
+   Both use .offer so the settle is never a layout jump. The approved field
+   list and nothing else.
+   ======================================================================= */
+
+.offer {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s4);
+  background: var(--surface);
+  border: var(--hair) solid var(--rule);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease-settle);
+}
+
+a.offer:hover {
+  border-color: var(--accent);
+}
+
+/* The thumbnail column is reserved whether or not a property has one, so a
+   streaming list has a single text baseline instead of a ragged left edge, and so
+   the skeleton's square sits exactly where an image will. */
+.offer__head {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: var(--s3);
+  align-items: start;
+}
+
+.offer__thumb {
+  grid-column: 1;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-sm);
+  border: var(--hair) solid var(--rule);
+  background: var(--sunk);
+  object-fit: cover;
+}
+
+.offer__headtext {
+  grid-column: 2;
+  display: grid;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+.offer__commute {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  color: var(--accent);
+}
+
+.offer__rank {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  color: var(--muted);
+}
+
+.offer__name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-body);
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-snug);
+  color: var(--ink);
+  margin: 0;
+  /* One line, so the card's height does not depend on how long a property is
+     called. The whole string stays in the DOM, so assistive tech still reads it
+     and Confirm shows it in full. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.offer__addr {
+  font-family: var(--font-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--muted);
+  margin: 0;
+  /* DESIGN calls this the address *line*. Keeping it to one makes the settle a
+     cross-fade instead of a reflow. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.offer__money {
+  display: grid;
+  gap: var(--s1);
+  border-top: var(--hair) solid var(--rule);
+  padding-top: var(--s3);
+}
+
+.offer__total {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-h2);
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.offer__pn {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  color: var(--muted);
+}
+
+.offer__verdict {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+
+.offer__reason {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  line-height: var(--lh-snug);
+  color: var(--ink-2);
+  /* Two lines are reserved. The reason is the arithmetic and is never clipped,
+     but the common case must not change the card's height. */
+  min-height: calc(2 * var(--lh-snug) * 1em);
+}
+
+.offer__chips {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+/* The settle. New results arrive over --dur-settle; they never pop. */
+.offer--settling {
+  animation: settle var(--dur-settle) var(--ease-settle) both;
+}
+
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Skeleton: identical classes, so identical geometry. */
+.offer--skeleton {
+  pointer-events: none;
+}
+
+.sk-bar {
+  display: inline-block;
+  vertical-align: middle;
+  height: 0.72em;
+  min-width: 2ch;
+  background: var(--rule);
+  border-radius: var(--r-sm);
+  animation: sk-pulse 1.4s var(--ease-settle) infinite;
+}
+
+.offer--skeleton .offer__thumb {
+  animation: sk-pulse 1.4s var(--ease-settle) infinite;
+}
+
+@keyframes sk-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offer--settling {
+    animation: none;
+  }
+
+  .sk-bar,
+  .offer--skeleton .offer__thumb,
+  .meter__seg[data-status="pending"]::after {
+    animation: none;
+  }
+}
+
+/* =======================================================================
+   VerdictChip — three variants, each carrying its word.
+   ======================================================================= */
+
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-machine);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  line-height: var(--lh-snug);
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-sm);
+  border: var(--hair) solid currentColor;
+  white-space: nowrap;
+}
+
+.verdict--in {
+  color: var(--in);
+  background: var(--in-soft);
+}
+
+.verdict--over {
+  color: var(--over);
+  background: var(--over-soft);
+}
+
+.verdict--blocked {
+  color: var(--blocked);
+  background: var(--blocked-soft);
+}
+
+/* The blocked disclosure. */
+.blocked-disclosure {
+  display: grid;
+  gap: var(--s4);
+}
+
+.blocked-disclosure__toggle {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  background: none;
+  border: 0;
+  padding: var(--s2) 0;
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  color: var(--accent);
+  border-bottom: var(--hair) solid var(--rule-strong);
+}
+
+.blocked-disclosure__toggle:hover {
+  border-bottom-color: var(--accent);
+}
+
+.blocked-disclosure__list {
+  display: grid;
+  gap: var(--s3);
+}
+
+/* =======================================================================
+   TotalBlock — Confirm only. The one elevation step in the product.
+   ======================================================================= */
+
+.total {
+  background: var(--surface);
+  border: var(--hair) solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  box-shadow: var(--elev-1);
+  padding: var(--s5);
+  display: grid;
+  gap: var(--s4);
+}
+
+.total__headline {
+  display: grid;
+  gap: var(--s1);
+}
+
+.total__amount {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-total);
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.total__sub {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.total__rows {
+  display: grid;
+  gap: 0;
+  border-top: var(--hair) solid var(--rule);
+}
+
+.total__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s2) 0;
+  border-bottom: var(--hair) solid var(--rule);
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.total__row-label {
+  color: var(--muted);
+}
+
+.total__row-amount {
+  color: var(--ink);
+  text-align: right;
+}
+
+.total__sentence {
+  font-family: var(--font-body);
+  font-size: var(--t-small);
+  line-height: var(--lh-snug);
+  color: var(--ink-2);
+  margin: 0;
+  max-width: var(--measure);
+}
+
+/* A flat restatement of the number on Trip. No elevation — that step is spent. */
+.total--flat {
+  box-shadow: none;
+  border-color: var(--rule);
+}
+
+.total--flat .total__amount {
+  font-size: var(--t-h2);
+}
+
+/* =======================================================================
+   DecidedLine — label · value · Edit
+   ======================================================================= */
+
+.decided {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding: var(--s3) 0;
+  border-bottom: var(--hair) solid var(--rule);
+}
+
+.decided__label {
+  flex: 0 0 auto;
+}
+
+.decided__value {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.decided__edit {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.decided__editor {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding-top: var(--s2);
+}
+
+/* =======================================================================
+   CancelWindow
+   ======================================================================= */
+
+.cancelwin {
+  display: grid;
+  gap: var(--s3);
+  justify-items: start;
+}
+
+.cancelwin__count {
+  font-family: var(--font-machine);
+  font-size: var(--t-small);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.cancelwin__deadline {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  color: var(--muted);
+}
+
+/* =======================================================================
+   ThemeToggle
+   ======================================================================= */
+
+.theme-toggle {
+  background: none;
+  border: var(--hair) solid var(--rule);
+  border-radius: var(--r-sm);
+  padding: var(--s1) var(--s2);
+  font-family: var(--font-machine);
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.theme-toggle:hover {
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+
+/* Skeleton bar widths and the neutral chip placeholders. Widths only — the type
+   sizes and line heights come from the real card classes, which is what makes the
+   geometry identical. */
+
+.sk-bar--commute {
+  width: 9ch;
+}
+
+.sk-bar--rank {
+  width: 24ch;
+}
+
+.sk-bar--name {
+  width: 62%;
+}
+
+.sk-bar--addr {
+  width: 84%;
+}
+
+.sk-bar--total {
+  width: 7ch;
+}
+
+.sk-bar--pn {
+  width: 28ch;
+}
+
+.sk-bar--reason {
+  width: 32ch;
+}
+
+.verdict--skeleton {
+  color: var(--rule-strong);
+  border-color: var(--rule);
+  background: var(--sunk);
+  animation: sk-pulse 1.4s var(--ease-settle) infinite;
+}
+
+.chip--skeleton {
+  color: var(--rule-strong);
+  border-color: var(--rule);
+  background: var(--sunk);
+  animation: sk-pulse 1.4s var(--ease-settle) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .verdict--skeleton,
+  .chip--skeleton {
+    animation: none;
+  }
+}

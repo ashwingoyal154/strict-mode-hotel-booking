@@ -1,0 +1,30 @@
+# Fly.io alternative to render.yaml. Same reasoning: one persistent process.
+# Create the volume first:  fly volumes create strict_mode_data --size 1 --region sin
+app = "strict-mode"
+primary_region = "sin"
+
+[build]
+  builder = "heroku/builder:24"
+
+[env]
+  NODE_ENV = "production"
+  SM_DATA_DIR = "/var/data"
+  PORT = "8080"
+
+[[mounts]]
+  source = "strict_mode_data"
+  destination = "/var/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 1   # in-memory search sessions do not survive a cold start
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/health"

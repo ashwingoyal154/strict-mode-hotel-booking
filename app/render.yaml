@@ -1,0 +1,29 @@
+# Render blueprint — a single long-running Node process with a persistent disk.
+#
+# Why not Vercel: this service keeps live search sessions in process memory
+# (src/server/search.ts holds a Map of SearchSession), streams results over SSE,
+# and persists through a file-backed Store. Serverless invocations are separate,
+# short-lived and have a read-only filesystem, so on Vercel a GET of a searchId
+# would land on an instance that has never seen it. Making it serverless means
+# Redis for sessions and Postgres for the Store — that is Slice 2's infrastructure,
+# pulled forward for no product gain. See plan.md.
+services:
+  - type: web
+    name: strict-mode
+    runtime: node
+    plan: starter
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SM_SECRET
+        generateValue: true   # unset would now refuse to boot, by design
+      - key: SM_DATA_DIR
+        value: /var/data
+    disk:
+      name: strict-mode-data
+      mountPath: /var/data
+      sizeGB: 1

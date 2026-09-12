@@ -1,0 +1,609 @@
+<title>Commute-First Hotel Spec</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  :root{
+    --ground:#F6F6F3;
+    --surface:#FFFFFF;
+    --sunk:#EFEFEA;
+    --ink:#15181D;
+    --ink-2:#3E444C;
+    --muted:#6A6F77;
+    --rule:#DFDFD8;
+    --rule-2:#C9C9C0;
+    --accent:#1C5C58;
+    --accent-soft:#E2EDEB;
+    --ok:#2C6840;
+    --ok-soft:#E3EEE5;
+    --warn:#8D5A07;
+    --warn-soft:#F5EBD8;
+    --block:#883026;
+    --block-soft:#F3E3E0;
+    --shadow:0 1px 2px rgba(21,24,29,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#13161A;
+      --surface:#1A1E23;
+      --sunk:#202429;
+      --ink:#E9EAE5;
+      --ink-2:#C3C6C2;
+      --muted:#8D9399;
+      --rule:#2B3036;
+      --rule-2:#3A4046;
+      --accent:#74B8B1;
+      --accent-soft:#1E2E2D;
+      --ok:#7FBE90;
+      --ok-soft:#1C2A20;
+      --warn:#D6A54F;
+      --warn-soft:#2B2418;
+      --block:#D68C80;
+      --block-soft:#2B1D1A;
+      --shadow:0 1px 2px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#13161A;
+    --surface:#1A1E23;
+    --sunk:#202429;
+    --ink:#E9EAE5;
+    --ink-2:#C3C6C2;
+    --muted:#8D9399;
+    --rule:#2B3036;
+    --rule-2:#3A4046;
+    --accent:#74B8B1;
+    --accent-soft:#1E2E2D;
+    --ok:#7FBE90;
+    --ok-soft:#1C2A20;
+    --warn:#D6A54F;
+    --warn-soft:#2B2418;
+    --block:#D68C80;
+    --block-soft:#2B1D1A;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"Source Serif 4",Georgia,"Times New Roman",serif;
+    font-size:17px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:40px 72px}
+
+  /* ---------- masthead ---------- */
+  .mast{border-bottom:2px solid var(--ink);padding-bottom:26px}
+  .eyebrow{
+    font-family:"JetBrains Mono",ui-monospace,monospace;
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 18px;
+  }
+  h1{
+    font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+    font-weight:700;font-size:clamp(34px,6.2vw,58px);
+    line-height:1.02;letter-spacing:-.025em;text-wrap:balance;margin:0 0 16px;
+  }
+  .thesis{font-size:clamp(18px,2.4vw,22px);line-height:1.48;color:var(--ink-2);max-width:62ch;margin:0}
+  .thesis em{font-style:italic;color:var(--ink)}
+  .meta{
+    display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:26px;
+    font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;
+    letter-spacing:.04em;color:var(--muted);
+  }
+  .meta b{color:var(--ink);font-weight:500}
+
+  /* ---------- sections ---------- */
+  section{
+    display:grid;grid-template-columns:112px minmax(0,1fr);
+    gap:0 40px;border-bottom:1px solid var(--rule);padding-block:44px;
+  }
+  .rail{position:sticky;top:24px;align-self:start}
+  .rail .num{
+    font-family:Archivo,sans-serif;font-weight:700;font-size:40px;
+    line-height:1;color:var(--rule-2);letter-spacing:-.03em;display:block;
+  }
+  .rail .tag{
+    font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);display:block;margin-top:8px;
+  }
+  h2{
+    font-family:Archivo,sans-serif;font-weight:600;
+    font-size:clamp(26px,3.4vw,34px);line-height:1.1;letter-spacing:-.02em;margin:0 0 6px;
+  }
+  .sub{color:var(--muted);font-size:15.5px;margin:0 0 26px;max-width:60ch}
+  h3{font-family:Archivo,sans-serif;font-weight:600;font-size:16px;letter-spacing:-.005em;margin:34px 0 10px}
+  h3:first-of-type{margin-top:0}
+  h3 .k{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:500;color:var(--accent);margin-right:9px}
+  p{margin:0 0 14px;max-width:66ch}
+  a{color:var(--accent)}
+  ul,ol{margin:0 0 14px;padding-left:20px}
+  li{margin-bottom:7px}
+  li::marker{color:var(--rule-2)}
+  strong{font-weight:600}
+  .lead-in{font-weight:600}
+  code{font-family:"JetBrains Mono",monospace;font-size:.85em;background:var(--sunk);border:1px solid var(--rule);padding:1px 5px}
+
+  /* ---------- tables ---------- */
+  .tablewrap{overflow-x:auto;margin:0 0 8px;border-top:1px solid var(--ink)}
+  table{border-collapse:collapse;width:100%;min-width:540px}
+  th,td{text-align:left;vertical-align:top;padding:14px 16px 14px 0;border-bottom:1px solid var(--rule)}
+  th{
+    font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:500;
+    letter-spacing:.13em;text-transform:uppercase;color:var(--muted);
+    padding-top:10px;padding-bottom:10px;
+  }
+  td{font-size:15.5px;line-height:1.5}
+  .research td:first-child{width:38%;color:var(--ink)}
+  .research td:nth-child(2){width:22%;font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted);line-height:1.65}
+  .research td:last-child{color:var(--ink-2)}
+  .pct{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:14px;color:var(--accent)}
+
+  /* ---------- decisions ---------- */
+  .decisions{min-width:420px}
+  .decisions td{padding:10px 16px 10px 0}
+  .decisions td:first-child{
+    width:38%;font-family:"JetBrains Mono",monospace;font-size:11px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:13px;
+  }
+  .decisions td:last-child{font-family:Archivo,sans-serif;font-weight:500;font-size:15px;color:var(--ink)}
+  .decisions td:last-child span{font-family:"Source Serif 4",serif;font-weight:400;color:var(--muted)}
+
+  /* ---------- tensions ---------- */
+  .tension{
+    border:1px solid var(--rule-2);border-left:4px solid var(--block);
+    background:var(--surface);padding:16px 18px;margin:0 0 12px;
+  }
+  .tension .tl{
+    font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--block);display:block;margin-bottom:7px;
+  }
+  .tension h4{
+    font-family:Archivo,sans-serif;font-weight:600;font-size:16.5px;
+    margin:0 0 7px;letter-spacing:-.01em;line-height:1.3;
+  }
+  .tension p{font-size:15.5px;margin:0 0 10px;color:var(--ink-2);max-width:64ch}
+  .tension p:last-child{margin-bottom:0}
+  .tension .fix{color:var(--ink)}
+
+  .risk{border-left:3px solid var(--warn);background:var(--warn-soft);padding:13px 16px;margin:14px 0}
+  .risk p{margin:0;font-size:15px;max-width:62ch}
+  .risk .rl{
+    font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--warn);display:block;margin-bottom:5px;
+  }
+
+  /* ---------- flow ---------- */
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 10px}
+  .step{background:var(--surface);border:1px solid var(--rule);padding:14px}
+  .step.alt{border-style:dashed;border-color:var(--accent);background:var(--accent-soft)}
+  .step .i{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.12em;color:var(--accent);display:block;margin-bottom:7px}
+  .step .nm{font-family:Archivo,sans-serif;font-weight:600;font-size:15px;display:block;margin-bottom:5px}
+  .step .d{font-size:13.5px;line-height:1.42;color:var(--muted)}
+  .flownote{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--muted);letter-spacing:.02em;margin:0 0 22px;line-height:1.6}
+
+  /* ---------- specimen ---------- */
+  .specimen{margin:18px 0 10px;border:1px dashed var(--rule-2);padding:18px;background:var(--sunk)}
+  .specimen-label{
+    font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 14px;
+  }
+  .card{background:var(--surface);border:1px solid var(--rule);box-shadow:var(--shadow);padding:16px;max-width:400px}
+  .commute{font-family:"JetBrains Mono",monospace;font-size:12.5px;font-weight:700;letter-spacing:.02em;color:var(--accent);display:block;margin-bottom:8px}
+  .hname{font-family:Archivo,sans-serif;font-weight:600;font-size:18px;letter-spacing:-.01em;display:block;margin-bottom:2px}
+  .haddr{font-size:13.5px;color:var(--muted);display:block;margin-bottom:12px}
+  .price{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .price .tot{font-family:Archivo,sans-serif;font-weight:700;font-size:26px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .price .per{font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border:1px solid currentColor}
+  .chip.ok{color:var(--ok);background:var(--ok-soft)}
+  .chip.plain{color:var(--ink-2);background:transparent;border-color:var(--rule-2)}
+
+  .states{display:grid;grid-template-columns:repeat(auto-fit,minmax(188px,1fr));gap:12px;margin:14px 0 16px}
+  .state{border-left:3px solid var(--rule-2);padding:2px 0 2px 13px}
+  .state.s-ok{border-color:var(--ok)}
+  .state.s-warn{border-color:var(--warn)}
+  .state.s-block{border-color:var(--block)}
+  .state .sn{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:4px}
+  .state.s-ok .sn{color:var(--ok)}
+  .state.s-warn .sn{color:var(--warn)}
+  .state.s-block .sn{color:var(--block)}
+  .state p{font-size:14px;line-height:1.45;color:var(--ink-2);margin:0;max-width:none}
+
+  /* ---------- budgets ---------- */
+  .budget{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:16px 0 10px}
+  .budget div{background:var(--surface);padding:12px 14px}
+  .budget dt{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .budget dd{font-family:Archivo,sans-serif;font-weight:700;font-size:19px;margin:0;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+
+  /* ---------- acceptance ---------- */
+  .gate{border:1px solid var(--accent);background:var(--accent-soft);padding:14px 16px;margin:0 0 8px}
+  .gate p{margin:0;font-size:15.5px;color:var(--ink);max-width:64ch}
+  .acc-group{
+    font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);
+    border-bottom:1px solid var(--rule);padding-bottom:7px;margin:30px 0 4px;
+  }
+  .acc-group.supply{color:var(--block)}
+  .acc{list-style:none;margin:0;padding:0}
+  .acc li{display:grid;grid-template-columns:48px minmax(0,1fr);gap:0 14px;padding:13px 0;border-bottom:1px solid var(--rule);margin:0}
+  .acc .id{font-family:"JetBrains Mono",monospace;font-size:11.5px;font-weight:700;color:var(--muted);padding-top:3px;letter-spacing:.04em}
+  .acc .txt{font-size:15.5px;line-height:1.5;color:var(--ink-2)}
+  .acc .txt b{color:var(--ink);font-weight:600}
+
+  footer{padding-top:34px}
+  footer h4{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:500}
+  footer p{font-size:13.5px;line-height:1.7;color:var(--muted);max-width:none}
+
+  @media (max-width:760px){
+    body{font-size:16px}
+    section{grid-template-columns:1fr;gap:0;padding-block:34px}
+    .rail{position:static;display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+    .rail .num{font-size:28px}
+    .rail .tag{margin-top:0}
+    .flow{grid-template-columns:1fr 1fr}
+    .acc li{grid-template-columns:42px minmax(0,1fr);gap:0 10px}
+  }
+  @media (max-width:430px){.flow{grid-template-columns:1fr}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="page">
+
+  <header class="mast">
+    <p class="eyebrow">Product spec · v2 · decisions confirmed</p>
+    <h1>A hotel platform that starts from the meeting, not the city.</h1>
+    <p class="thesis">Enterprise hotel booking for business travellers. It asks <em>where is your meeting?</em>, ranks by commute time, shows one all-in number that never moves, and bills the company directly — displacing the incumbent TMC for hotels.</p>
+    <div class="meta">
+      <span><b>Scope</b> Hotels only</span>
+      <span><b>Customer</b> Enterprise, 5,000+</span>
+      <span><b>Platform</b> Responsive web</span>
+      <span><b>Market</b> Global, multi-currency, EN</span>
+      <span><b>Dated</b> 12 Sep 2026</span>
+    </div>
+  </header>
+
+  <!-- ============ 0 DECISIONS ============ -->
+  <section>
+    <div class="rail"><span class="num">00</span><span class="tag">Decisions</span></div>
+    <div class="body-col">
+      <h2>Decisions and tensions</h2>
+      <p class="sub">Eleven choices are now settled. Three of them pull against each other, and this section says so before the spec builds on them.</p>
+
+      <h3>Settled</h3>
+      <div class="tablewrap">
+        <table class="decisions">
+          <tbody>
+            <tr><td>Build goal</td><td>Production v1 <span>— real software, production standards</span></td></tr>
+            <tr><td>Inventory</td><td>Fixture supply <span>— behind a swappable adapter</span></td></tr>
+            <tr><td>Payment</td><td>Central billing <span>— single-use virtual card, no personal-card path</span></td></tr>
+            <tr><td>Market</td><td>Global, multi-currency <span>— English-only UI</span></td></tr>
+            <tr><td>Tax invoicing</td><td>India GST only <span>— elsewhere, tax as a line item</span></td></tr>
+            <tr><td>Platform</td><td>Responsive web only <span>— no native apps</span></td></tr>
+            <tr><td>AI</td><td>Chat as an alternative entry <span>— four screens stay primary</span></td></tr>
+            <tr><td>Customer</td><td>Enterprise, 5,000+ <span>— SSO, SCIM, SOC 2 are gating</span></td></tr>
+            <tr><td>Delegate booking</td><td>Self-booking only <span>— no arranger mode in v1</span></td></tr>
+            <tr><td>TMC</td><td>Replace the incumbent for hotels</td></tr>
+            <tr><td>Over-cap default</td><td>Hard approval <span>— nothing books without a yes</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Three tensions to hold knowingly</h3>
+
+      <div class="tension">
+        <span class="tl">T1 · scope</span>
+        <h4>You cannot displace a TMC with fixture inventory.</h4>
+        <p>"Production v1" and "mock supply" are compatible. "Replace the TMC" and "mock supply" are not.</p>
+        <p class="fix"><strong>Resolution:</strong> split the gate. The platform is built and accepted to production standard on fixtures (A1–A26), and a separate <strong>supply-integration gate</strong> (S1–S3) must pass before any enterprise go-live. Fixtures are the development and acceptance substrate, never the launch substrate. If fixtures were meant to ship, the TMC-replacement claim comes out instead.</p>
+      </div>
+
+      <div class="tension">
+        <span class="tl">T2 · deal risk</span>
+        <h4>Self-booking only will not survive a 5,000-person enterprise deal.</h4>
+        <p>Executive travel is almost never self-booked; arrangers and assistants book it. Displacing the TMC for hotels while refusing delegate booking leaves executive hotel bookings with nowhere to go — and the executive sponsor is usually the person who notices.</p>
+        <p class="fix"><strong>Resolution:</strong> v1 ships self-booking as instructed, and <strong>arranger mode is the first post-v1 item</strong>. Until it exists, every contract scopes the displacement to non-executive travel, or the incumbent stays for the population that matters most to the sponsor.</p>
+      </div>
+
+      <div class="tension">
+        <span class="tl">T3 · cost</span>
+        <h4>Replacing the TMC means owning 24/7 servicing on day one.</h4>
+        <p>A TMC's real product is the 2am phone call when a traveller is walked at the front desk. That is not a phase-two concern.</p>
+        <p class="fix"><strong>Resolution:</strong> servicing is specified in §2.8 and gated in A21–A23. Budget a staffed rota, not an on-call engineer.</p>
+      </div>
+
+      <h3>Not in v1</h3>
+      <p>Flights, rail, cars. Expense-report authoring. Arranger / delegate booking (first post-v1). Group blocks of ten rooms or more. Hotel-side RFP and rate negotiation. Multi-language UI. Native apps. Compliant tax documents outside India.</p>
+    </div>
+  </section>
+
+  <!-- ============ 1 INTENT ============ -->
+  <section>
+    <div class="rail"><span class="num">01</span><span class="tag">Intent</span></div>
+    <div class="body-col">
+      <h2>Intent</h2>
+      <p class="sub">Four research findings, each forcing a structural consequence rather than a feature.</p>
+
+      <div class="tablewrap">
+        <table class="research">
+          <thead><tr><th>Finding</th><th>Source</th><th>Consequence</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Travellers choose on <span class="pct">location 77%</span>, then <span class="pct">policy 56%</span>, then <span class="pct">price 53%</span>. Amenities trail at 21%.</td>
+              <td>BCD Travel global traveller survey</td>
+              <td>Primary input is a meeting address, not a city. Default sort is commute time, not price.</td>
+            </tr>
+            <tr>
+              <td><span class="pct">61%</span> abandon over hidden fees; 31% over late-stage price changes; <span class="pct">72%</span> cite hotel price disparity as a major pain.</td>
+              <td>Fullstory, Jun 2026 · BCD</td>
+              <td>One all-in number, quoted at search, unchanged at confirm. Never a silent re-price.</td>
+            </tr>
+            <tr>
+              <td><span class="pct">63%</span> name expense-report time as their top pain; 29% staying inside reimbursement policy; 20% paying out of pocket.</td>
+              <td>BCD payment &amp; expense survey</td>
+              <td>Central billing by default. Zero-receipt trips. Policy enforced before the click.</td>
+            </tr>
+            <tr>
+              <td><span class="pct">Wi-Fi 88%</span> and <span class="pct">breakfast 80%</span> are the services actually used; desk and quiet space matter on blended trips.</td>
+              <td>BCD · Hyatt 2026</td>
+              <td>One <strong>Work-ready</strong> badge replaces a forty-checkbox amenity tree.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Who it serves</h3>
+      <ul>
+        <li><span class="lead-in">Traveller (primary).</span> Books their own trips. Wants it done in under a minute from a phone, near the meeting, without thinking about policy or money.</li>
+        <li><span class="lead-in">Approver (secondary).</span> A line manager approving one over-cap exception in one tap — held to an SLA, because a rate is moving while they think.</li>
+        <li><span class="lead-in">Travel manager (secondary).</span> Owns policy across entities and regions. Answers "who is where tonight" and "what did we spend, where, against what cap".</li>
+        <li><span class="lead-in">Finance (tertiary).</span> Needs the charge on the right legal entity, in the right currency, with a GST-valid invoice for Indian entities.</li>
+        <li><span class="lead-in">Security &amp; procurement (gating).</span> Not users, but they block the deal. SOC 2, SSO/SCIM, a pen test and a DPA are acceptance criteria, not paperwork.</li>
+      </ul>
+
+      <h3>Success means</h3>
+      <dl class="budget">
+        <div><dt>Search → confirm</dt><dd>&lt; 90s</dd></div>
+        <div><dt>In policy</dt><dd>&gt; 85%</dd></div>
+        <div><dt>Zero post-trip action</dt><dd>&gt; 70%</dd></div>
+        <div><dt>Approvals in SLA</dt><dd>&gt; 95%</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ============ 2 BEHAVIOUR ============ -->
+  <section>
+    <div class="rail"><span class="num">02</span><span class="tag">Behaviour</span></div>
+    <div class="body-col">
+      <h2>Behaviour</h2>
+      <p class="sub">Four screens and one shortcut. Everything below is what happens on them.</p>
+
+      <div class="flow">
+        <div class="step"><span class="i">01</span><span class="nm">Search</span><span class="d">Meeting address, dates. Nothing else required.</span></div>
+        <div class="step"><span class="i">02</span><span class="nm">Results</span><span class="d">Ranked by commute time, policy state always visible.</span></div>
+        <div class="step"><span class="i">03</span><span class="nm">Confirm</span><span class="d">One number, one tap. No payment decision.</span></div>
+        <div class="step"><span class="i">04</span><span class="nm">Trip</span><span class="d">Address, check-in, cancel, invoice, get help.</span></div>
+      </div>
+      <div class="flow" style="grid-template-columns:1fr">
+        <div class="step alt"><span class="i">Shortcut</span><span class="nm">Chat</span><span class="d">Natural language in, structured search out — lands the traveller in Results. Never books.</span></div>
+      </div>
+      <p class="flownote">No hotel detail page in the default path — the card expands in place. No cart. No account wall; SSO only.</p>
+
+      <h3><span class="k">2.1</span>Search</h3>
+      <ul>
+        <li>One input: <strong>destination or meeting address</strong> with places autocomplete, plus dates. Guests defaults to 1, rooms to 1.</li>
+        <li>Paste a calendar invite, or connect the calendar, and dates plus anchor address pre-fill.</li>
+        <li>Returning travellers get their last three anchors as chips — <em>HSBC Bandra · 4 nights · Jun</em>.</li>
+      </ul>
+
+      <h3><span class="k">2.2</span>Chat as an alternative entry</h3>
+      <ul>
+        <li>One free-text field: <em>"hotel near the Bandra office Tuesday to Friday, under the cap"</em> resolves to a structured search — anchor, dates, guests, constraints — and drops the traveller <strong>straight into Results</strong>.</li>
+        <li><strong>Chat never books.</strong> It resolves intent and hands off; confirmation always happens on the Confirm screen with the full number and cancellation terms visible. A deliberate safety boundary, not a phasing decision.</li>
+        <li>Low confidence on any field means one clarifying question, then a fall back to the form with whatever was resolved pre-filled. It never guesses a date silently.</li>
+        <li>English only. The field is an equal-weight entry point on Search — not a floating bubble, not a separate product surface.</li>
+      </ul>
+
+      <h3><span class="k">2.3</span>Results — the differentiator</h3>
+      <p>Default sort is <strong>commute time to the anchor address</strong>: walking minutes under 12, otherwise transit or drive. Not straight-line distance, and not price.</p>
+
+      <div class="specimen">
+        <p class="specimen-label">Result card — the complete approved field list</p>
+        <div class="card">
+          <span class="commute">7 min walk to BKC · Bandra Kurla Complex</span>
+          <span class="hname">Vivanta Mumbai</span>
+          <span class="haddr">Plot C-68, G Block, BKC</span>
+          <div class="price">
+            <span class="tot">₹34,800</span>
+            <span class="per">all-in, 4 nights · ₹8,700/night</span>
+          </div>
+          <div class="chips">
+            <span class="chip ok">In policy</span>
+            <span class="chip plain">Work-ready</span>
+            <span class="chip plain">Free cancel to 14 Jun</span>
+          </div>
+        </div>
+      </div>
+      <p class="flownote">Nothing else renders on a card. No carousel, no star slider, no promotional badge. A build-failing test enforces this list.</p>
+
+      <p>Every rate sits in <strong>exactly three policy states</strong>, always visible:</p>
+      <div class="states">
+        <div class="state s-ok"><span class="sn">In policy</span><p>Bookable in one tap.</p></div>
+        <div class="state s-warn"><span class="sn">Over cap</span><p>Hard approval required. Shows the overage — <em>₹2,400 over your ₹8,000 cap</em> — and who will be asked.</p></div>
+        <div class="state s-block"><span class="sn">Blocked</span><p>Hidden behind a "show blocked" link with the reason: unapproved supplier, restricted country, non-refundable where policy requires flex.</p></div>
+      </div>
+
+      <p>Filters, and only these: commute time, all-in price, Work-ready, free cancellation, breakfast included, brand or loyalty. Twenty per page, infinite scroll, skeleton cards streaming as sources answer. The map is a toggle, never the default view.</p>
+
+      <h3><span class="k">2.4</span>Money, currency and rate rules</h3>
+      <ul>
+        <li>Every rate carries its all-in total, cancellation deadline in the traveller's local time, breakfast yes or no, and its source.</li>
+        <li><span class="lead-in">Three currencies exist per booking and all three are stored:</span> <em>supplier</em> (what the rate is sold in), <em>display</em> (traveller locale or company default), <em>settlement</em> (the billing entity's). Each conversion persists its FX rate and timestamp. No stored amount is ever mutated by a re-conversion.</li>
+        <li><span class="lead-in">Caps are authored per currency</span>, per city tier, per entity. Where a traveller hits a market with no authored cap, conversion uses a <strong>monthly-pinned corporate FX rate</strong>, never a live one — otherwise the same booking yields different policy verdicts on different days and §3.3's reproducibility requirement breaks.</li>
+        <li><span class="lead-in">Tax:</span> India GST produces a compliant invoice carrying the billing entity's GSTIN. Every other market itemises tax in lines summing exactly to the all-in total, behind a pluggable tax-document interface ready for the second regime.</li>
+        <li>If a rate moves or disappears between search and confirm, the platform states the delta and requires a re-confirm.</li>
+      </ul>
+
+      <h3><span class="k">2.5</span>Confirm</h3>
+      <p>One screen: traveller name pre-filled, rate summary, the single total, cancellation deadline, cost centre and legal entity pre-filled and editable.</p>
+      <p>Payment is not a traveller decision. <strong>Central billing via a single-use virtual card</strong> issued at confirmation, scoped to the exact amount plus a configurable incidentals buffer, drawn on the correct legal entity. No personal-card path in v1.</p>
+      <p><strong>Over cap means hard approval.</strong> The traveller supplies a reason from the policy list plus free text. Then:</p>
+      <ul>
+        <li>The rate is held where the source supports a hold. Where it does not, the traveller is told plainly that the rate may move — the system's job is to tell the truth about whether the rate is held, not to pretend it is.</li>
+        <li>The approver gets push, email and Slack with the overage amount and Approve / Reject. An SLA timer is visible to both sides.</li>
+        <li>On SLA breach the request auto-escalates one level up the manager chain. It never silently expires.</li>
+      </ul>
+      <p>Confirmation is idempotent: a double-submit never produces two bookings.</p>
+
+      <h3><span class="k">2.6</span>Trip</h3>
+      <p>One object: confirmation number, address with a one-tap maps or ride-hail handoff, check-in time, hotel phone, cancellation deadline with a <strong>Cancel</strong> button, the tax invoice as soon as it exists, and a <strong>Get help</strong> button that reaches a human.</p>
+      <p>Three nudges only — 24h before the free-cancellation deadline, 3h before check-in with the address, and after checkout only if incidentals are unbilled. Modifying is cancel-and-rebook, one flow, price delta up front.</p>
+
+      <h3><span class="k">2.7</span>Servicing — because we replace the TMC</h3>
+      <ul>
+        <li><span class="lead-in">24/7 human support</span> on a staffed rota, reachable from the Trip screen by chat and phone. Target answer under 2 minutes.</li>
+        <li><span class="lead-in">Walked-guest and overbooking recovery:</span> an agent rebooks a comparable in-policy property and re-issues the virtual card, with zero traveller payment, inside 60 minutes.</li>
+        <li><span class="lead-in">Disruption:</span> a traveller whose flight is cancelled shifts dates in one tap with the delta shown, outside business hours included.</li>
+        <li><span class="lead-in">Virtual-card declines</span> route to the same desk, with a hotel-facing authorisation letter attached to every booking from the start.</li>
+      </ul>
+
+      <h3><span class="k">2.8</span>Admin — enterprise shape</h3>
+      <ul>
+        <li><span class="lead-in">Policy is hierarchical, not one page:</span> global → legal entity → region → department → traveller group. Caps per currency with named-city overrides, cancellation requirement, approval mode and approver chain, blocked suppliers and countries, cost centres, entity mapping. Inheritance is visible — an admin can see which level set an effective value.</li>
+        <li><span class="lead-in">Identity is not optional:</span> SAML/OIDC SSO and <strong>SCIM provisioning</strong> are mandatory. Joiner, mover and leaver flows and the manager chain come from the directory.</li>
+        <li><span class="lead-in">Multi-entity billing:</span> every booking is attributed to one legal entity, and charges, invoices and reporting never cross entities.</li>
+        <li><span class="lead-in">Reporting:</span> spend by entity, region, department and month; in-policy percentage; the exception list with justifications and approver decisions; top properties; cap-breach patterns. CSV plus a scheduled export. No BI builder.</li>
+        <li><span class="lead-in">Immutable audit log:</span> every policy change, approval, booking, cancellation and export attributable to a user with a timestamp, exportable for the customer's own auditors.</li>
+        <li><span class="lead-in">Duty of care:</span> one "travellers in market tonight" view, per entity and globally. Restricted countries blocked; advisory-raised cities flagged at confirm.</li>
+      </ul>
+
+      <h3><span class="k">2.9</span>Visual language — minimalist and load-bearing</h3>
+      <ul>
+        <li>One accent colour. Type-led, not image-led: a card is text, a commute time and one small photo.</li>
+        <li>Green, amber and hidden are the <strong>only</strong> use of colour as signal in results; everything else is greyscale, so policy state cannot be missed.</li>
+        <li>No hero imagery, no banners, no upsell interstitials, ever.</li>
+        <li>Mobile-first at 390px. Desktop is the same single column with the map beside it. Keyboard-navigable throughout; WCAG 2.2 AA.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ 3 CONSTRAINTS ============ -->
+  <section>
+    <div class="rail"><span class="num">03</span><span class="tag">Constraints</span></div>
+    <div class="body-col">
+      <h2>Constraints</h2>
+      <p class="sub">The boundaries that are not negotiable, and where the real cost sits.</p>
+
+      <h3><span class="k">3.1</span>Supply — the critical path</h3>
+      <ul>
+        <li>v1 is built against a <strong>fixture supply source</strong> implementing a <code>RateSource</code> interface: property content, availability, multi-currency rates, cancellation policies, and deliberately injected failure modes — timeout, price drift, sold-out-on-confirm, virtual-card decline. Fixtures must be adversarial, not happy-path; they are the only way A3, A5 and A22 get tested at all.</li>
+        <li><strong>No booking, policy, billing or UI code may know which <code>RateSource</code> it is talking to.</strong> Swapping fixtures for a live supplier is a config change plus one adapter, and S1 verifies exactly that.</li>
+        <li><span class="lead-in">Live supply is a go-live gate, not a backlog item.</span> Expedia Rapid is the recommended first adapter — roughly 700k properties, 200+ countries, and <strong>no IATA accreditation required</strong>, the only path that adds no months-long accreditation dependency. A bedbank fills gaps. Negotiated corporate rates need GDS or direct chain deals and stay off v1's path, accepted as pass-through rate codes.</li>
+        <li>Source latency is a design constraint from the first line of code: fan out in parallel, stream results, never block on the slowest source. Cache static property content hard; never cache availability or price.</li>
+      </ul>
+
+      <h3><span class="k">3.2</span>Money and data</h3>
+      <ul>
+        <li><span class="lead-in">PCI DSS.</span> Never store, log or transmit a raw card number. Virtual cards issue through a tokenising processor; card data lives only in that vault. Target SAQ-A scope — designing card data out is far cheaper than complying with it in.</li>
+        <li><span class="lead-in">Data protection, enterprise grade.</span> GDPR and India's DPDP Act both in scope from day one. Lawful basis: contract performance for booking data, legitimate interest for duty of care — documented, with a DPA and a published sub-processor list. Collect name, work email, employer, entity, cost centre; no passport, no date of birth, no loyalty credentials in clear. Retention: bookings 7 years for tax, traveller location 90 days, search history 30 days. Data residency configurable per customer — enterprise security reviews will ask.</li>
+        <li><span class="lead-in">SOC 2 Type II</span> controls implemented and evidenced, plus a third-party penetration test with no open high or critical findings. These gate the first deal, so they gate v1.</li>
+      </ul>
+      <div class="risk">
+        <span class="rl">Known operational risk</span>
+        <p>Virtual cards are declined by some properties, and check-in authorisation holds are a documented friction source. Every booking ships an authorisation letter, decline rate is a launch metric, and §2.7 owns the recovery path — not a support queue discovered after go-live.</p>
+      </div>
+
+      <h3><span class="k">3.3</span>Engineering</h3>
+      <ul>
+        <li>Bookings are money. Every source write carries an idempotency key. Booking state is a persisted machine — <code>searched → held → pending_approval → confirmed → modified → cancelled → settled</code> — with every source request and response logged immutably for disputes.</li>
+        <li>Policy evaluation is a <strong>pure, versioned function</strong>: <code>(rate, traveller, policyVersion, fxPin) → in | over | blocked + reason</code>. Server-side, one code path for display and enforcement, verdict stored with the booking so an audit years later reproduces the decision exactly — which is why the FX pin is an input, not a lookup.</li>
+        <li>Approval holds assume rate loss. Correctness is telling the truth about whether the rate is held.</li>
+        <li>A source outage degrades — fewer results, a banner — never errors.</li>
+      </ul>
+      <dl class="budget">
+        <div><dt>Search p95</dt><dd>&lt; 3s</dd></div>
+        <div><dt>Confirm p95</dt><dd>&lt; 5s</dd></div>
+        <div><dt>Interaction</dt><dd>&lt; 100ms</dd></div>
+        <div><dt>FCP on 4G</dt><dd>&lt; 1.5s</dd></div>
+        <div><dt>Availability</dt><dd>99.9%</dd></div>
+      </dl>
+
+      <h3><span class="k">3.4</span>Commercial</h3>
+      <p>Revenue is source commission plus a per-booking or per-seat SaaS fee. <strong>Revenue must never reorder results</strong> — a commission-weighted sort destroys the only thing being sold, which is commute-time honesty. Enforce it as a test, not a principle.</p>
+      <p>Enterprise cycles run 6–12 months and are gated by security review, so §3.2's compliance work sits on the critical path alongside the product rather than trailing it. And displacing the TMC for hotels while air stays with the incumbent means the customer runs two tools — supply a clean booking export and webhook so their duty-of-care and reporting stack still sees one picture.</p>
+    </div>
+  </section>
+
+  <!-- ============ 4 ACCEPTANCE ============ -->
+  <section>
+    <div class="rail"><span class="num">04</span><span class="tag">Acceptance</span></div>
+    <div class="body-col">
+      <h2>Acceptance</h2>
+      <p class="sub">Two gates, twenty-nine criteria. Each is referenced by id from the test plan.</p>
+
+      <div class="gate">
+        <p>v1 is <strong>feature-complete</strong> when A1–A26 pass on fixture supply. v1 is <strong>shippable to an enterprise</strong> only when S1–S3 also pass on live supply. Do not conflate the two — see T1.</p>
+      </div>
+
+      <p class="acc-group">Journey</p>
+      <ul class="acc">
+        <li><span class="id">A1</span><span class="txt">A traveller lands via SSO, types a meeting address, picks dates and confirms in <b>under 90 seconds, median, on a phone</b> — no account setup, no payment entry.</span></li>
+        <li><span class="id">A2</span><span class="txt">Default order is commute time to the anchor, and the top result's stated commute is within <b>±3 minutes</b> of a maps reference for 9 of 10 spot-checked addresses.</span></li>
+        <li><span class="id">A3</span><span class="txt">The total on the first results screen equals the total on the confirmation email <b>to the cent</b>, across 100 consecutive bookings including fixture price-drift cases. Drift surfaces as an explicit re-confirm, never a silent adjustment.</span></li>
+        <li><span class="id">A4</span><span class="txt">An in-policy booking takes <b>exactly one tap</b> from results card to confirmation.</span></li>
+        <li><span class="id">A5</span><span class="txt">An over-cap booking cannot confirm without a justification; the approver is notified within 30 seconds; the traveller is told truthfully whether the rate is held; SLA breach auto-escalates one level and <b>never silently expires</b>.</span></li>
+        <li><span class="id">A6</span><span class="txt">A blocked rate cannot be booked through the UI <b>or</b> by posting it directly to <code>/bookings</code>.</span></li>
+        <li><span class="id">A7</span><span class="txt">Cancelling inside the free window costs zero, takes one tap, and reaches the source within 60 seconds.</span></li>
+        <li><span class="id">A8</span><span class="txt">Across a 50-utterance corpus, chat resolves anchor and dates correctly or asks exactly one clarifying question in <b>9 of 10</b> cases — and <b>never</b> completes a booking.</span></li>
+      </ul>
+
+      <p class="acc-group">Money and records</p>
+      <ul class="acc">
+        <li><span class="id">A9</span><span class="txt">Every confirmed booking produces a central-billing charge with <b>no traveller out-of-pocket</b>, drawn on the correct legal entity.</span></li>
+        <li><span class="id">A10</span><span class="txt">An Indian-entity booking produces a <b>GST-compliant invoice carrying the entity's GSTIN</b> within 48 hours of checkout, accepted by a tax reviewer. Non-GST markets itemise tax in lines summing exactly to the all-in total.</span></li>
+        <li><span class="id">A11</span><span class="txt">Supplier, display and settlement currencies are all stored per booking with FX rate and timestamp, and every displayed figure is <b>re-derivable months later</b>.</span></li>
+        <li><span class="id">A12</span><span class="txt">Re-running policy evaluation against a stored booking reproduces the verdict and reason string <b>byte-identical</b>, including the pinned-FX conversion path.</span></li>
+        <li><span class="id">A13</span><span class="txt">No raw card number appears in any database, log or trace — proven by a scan of all three.</span></li>
+        <li><span class="id">A14</span><span class="txt">A double-submitted confirmation yields exactly one booking.</span></li>
+      </ul>
+
+      <p class="acc-group">Enterprise and trust</p>
+      <ul class="acc">
+        <li><span class="id">A15</span><span class="txt">SSO and <b>SCIM</b> are live: a directory joiner can book within 15 minutes, and a leaver cannot book at all. The approval manager chain comes from the directory, not a spreadsheet.</span></li>
+        <li><span class="id">A16</span><span class="txt">A global policy value is visibly overridden at entity, region, department and group level, and the admin UI shows <b>which level set the effective value</b>.</span></li>
+        <li><span class="id">A17</span><span class="txt">Charges, invoices and reports <b>never cross legal entities</b> — verified with a two-entity fixture customer.</span></li>
+        <li><span class="id">A18</span><span class="txt">The audit log attributes every policy change, approval, booking, cancellation and export to a user and timestamp, is immutable, and exports for the customer's auditors.</span></li>
+        <li><span class="id">A19</span><span class="txt">SOC 2 Type II controls are implemented with evidence collected, and a third-party penetration test closes with <b>no open high or critical findings</b>.</span></li>
+        <li><span class="id">A20</span><span class="txt">A traveller data export and a full erasure both complete from the admin UI, and data residency is configurable per customer.</span></li>
+      </ul>
+
+      <p class="acc-group">Servicing</p>
+      <ul class="acc">
+        <li><span class="id">A21</span><span class="txt">24/7 support answers in <b>under 2 minutes</b> by chat and phone, proven in a drill run at 3am local.</span></li>
+        <li><span class="id">A22</span><span class="txt">A walked or overbooked traveller is rebooked into a comparable in-policy property, with a re-issued virtual card and <b>zero traveller payment</b>, inside 60 minutes.</span></li>
+        <li><span class="id">A23</span><span class="txt">A traveller whose flight is cancelled shifts their dates in one tap with the delta shown, outside business hours.</span></li>
+      </ul>
+
+      <p class="acc-group">Quality bar</p>
+      <ul class="acc">
+        <li><span class="id">A24</span><span class="txt">Search p95 under 3s and confirm p95 under 5s at 50 concurrent searches; a source forced to time out <b>degrades the page without erroring it</b>; measured availability 99.9%.</span></li>
+        <li><span class="id">A25</span><span class="txt">Every screen is usable at 390px, keyboard-only, and passes automated WCAG 2.2 AA checks. A build-failing test asserts no results card renders any element outside the approved field list.</span></li>
+        <li><span class="id">A26</span><span class="txt">Five real business travellers complete an unguided booking, and at least four say <b>unprompted</b> that they know what the trip cost them personally (nothing) and what they must do afterwards (nothing).</span></li>
+      </ul>
+
+      <p class="acc-group supply">Supply-integration gate · before any enterprise go-live</p>
+      <ul class="acc">
+        <li><span class="id">S1</span><span class="txt">The fixture <code>RateSource</code> is replaced by a live supplier adapter with <b>zero changes</b> to policy, booking, billing or UI code.</span></li>
+        <li><span class="id">S2</span><span class="txt">A3's to-the-cent price parity and A5's rate-hold honesty both <b>re-pass on live inventory</b>.</span></li>
+        <li><span class="id">S3</span><span class="txt">Virtual cards are accepted at <b>95% or more</b> of the top 200 properties by the launch customer's volume, with a working fallback for the rest.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <h4>Research sources</h4>
+    <p>BCD Travel payment &amp; expense survey 2026 · BCD Travel global traveller accommodation-choice survey · Fullstory Travel &amp; Hospitality Survey, Jun 2026 · BTN Hotel Survey Report 2026 · Hyatt business-traveller research 2026 · Expedia Rapid, Hotelbeds and Amadeus hotel-API capability comparisons 2026 · PCI DSS hospitality guidance · Navan, TravelPerk, Engine and Spotnana feature comparisons 2026.</p>
+  </footer>
+
+</div>
