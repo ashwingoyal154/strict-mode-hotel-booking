@@ -64,8 +64,15 @@ silently falls back to fixtures or the sandbox.
 
 ## Verification (Slice 2 build)
 
-**583 tests: 582 pass, 1 skipped** (the live-Blob contract run, gated behind
-`SM_TEST_BLOB=1`, which passed 27/27 against the real Mumbai store). Typecheck clean.
+**587 tests: 586 pass, 1 skipped** (the live-Blob contract run, gated behind
+`SM_TEST_BLOB=1`, which passed 30/30 against the real Mumbai store). Typecheck clean.
+Under full-suite load on a laptop, A8 and one cancellation test can hit their timeouts;
+both pass alone (A8 50/50).
+
+**Production smoke (14 Sep 2026, https://strict-mode-hotel.vercel.app):** sign-in,
+search (7 in policy, 3 over cap), in-policy booking confirmed with price parity, over-cap
+request pending with no card issued, the approver's queue, approve → booking confirmed
+with a card, and the demo GST tax invoice (5% slab, no ITC) all pass.
 
 | Criterion | Result |
 |---|---|
@@ -95,7 +102,13 @@ silently falls back to fixtures or the sandbox.
   Content API pipeline replaces `propertyIdsForAnchor` / `propertyFor`.
 - **Vercel Blob instead of Postgres.** Blob is Vercel's own store, so it needed no
   third-party terms and gives atomic create plus CAS. Postgres can replace it behind the
-  same `DocPersistence` port. A Blob write measured 1.2–1.8 s from a laptop, so watch
-  booking latency in production.
+  same `DocPersistence` port. It is slow: in production a booking takes about 8 s, an
+  over-cap request about 17 s and an approval about 12 s, all Blob round trips.
+  Postgres is the fix before real traffic. Blob also reports a weak ETag (`W/"…"`)
+  for documents over about 1 KB, which its own `ifMatch` rejects; the adapter
+  normalises it, and the contract suite covers a large-document update.
 - **Escalations.** Vercel Hobby cron fires daily. Every approval read materialises
-  escalations anyway, and a throttled in-request tick sends their notifications promptly.
+  escalations, so queues are always correct, but on Vercel the in-request tick is off
+  (it stretched cold starts past the function limit), so escalation notifications go
+  out with the daily cron. A paid plan's minute cron, or `SM_OPPORTUNISTIC_TICK=on`, restores prompt
+  notices.
