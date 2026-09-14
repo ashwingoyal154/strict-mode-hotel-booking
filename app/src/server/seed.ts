@@ -194,13 +194,29 @@ export const DEMO_PENDING_APPROVAL_ID = "apr_demo_pending";
 
 const CANARY_ID = /~(DRIFT|SOLDOUT|LATEDRIFT)$/;
 
+/** Longer than any seed step can take, even on a cold instance talking to Blob. */
+const SEED_LOCK_STALE_MS = 5 * 60_000;
+
 async function withSeedLock(store: Store, key: string, now: Date, fn: () => Promise<string | null>): Promise<void> {
-  const claim = await store.reserveIdempotencyKey({
+  const reservation = {
     key,
     travellerId: "system",
     requestHash: "seed",
     createdAt: now.toISOString(),
-  });
+  };
+  let claim = await store.reserveIdempotencyKey(reservation);
+  // A serverless instance killed mid-seed leaves its reservation in flight forever,
+  // and every later instance would skip this step for good (the demo invoice never
+  // appeared in production). A reservation abandoned for longer than a seed could
+  // possibly take is released and claimed again.
+  if (
+    !claim.reserved &&
+    claim.existing.state === "in_flight" &&
+    now.getTime() - Date.parse(claim.existing.createdAt) > SEED_LOCK_STALE_MS
+  ) {
+    await store.releaseIdempotencyKey(key);
+    claim = await store.reserveIdempotencyKey(reservation);
+  }
   if (!claim.reserved) return;
   let done = false;
   try {

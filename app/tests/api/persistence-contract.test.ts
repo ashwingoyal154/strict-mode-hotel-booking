@@ -180,6 +180,38 @@ for (const backend of backends) {
       await a.delete("contract-rw", "doc-1"); // deleting a missing doc is a no-op
     });
 
+    // Regression. Every other case here uses small documents, and the real Blob run
+    // passed 27/27 while every production approval, booking and index update failed.
+    // Blob serves a document over ~1 KB compressed with a WEAK ETag (W/"…") that its
+    // own ifMatch rejects. The etag used for the CAS here comes from a fresh read,
+    // not from the write, because that is exactly the path production takes.
+    timed("compare-and-swap works on a document large enough to be served compressed", async () => {
+      const big = (n: number) => ({ n, pad: "x".repeat(6_000) });
+      const created = await a.create("contract-large", "doc", big(1));
+      expect(created).not.toBeNull();
+
+      const read = await b.get<{ n: number; pad: string }>("contract-large", "doc");
+      expect(read?.doc.n).toBe(1);
+      const replaced = await b.replace("contract-large", "doc", big(2), read?.etag ?? "");
+      expect(replaced, "CAS with an etag taken from a read must succeed").not.toBeNull();
+
+      const [sa, sb] = stores;
+      // Only the fields the store indexes on are real; the padding makes it large.
+      await sa.putApproval({
+        id: "apr_large",
+        entityId: "acme",
+        bookingId: "bkg_large",
+        travellerId: "trv_large",
+        state: "pending",
+        chain: [],
+        levels: [],
+        createdAt: new Date().toISOString(),
+        pad: "y".repeat(6_000),
+      } as never);
+      const mutated = await sb.mutateApproval("apr_large", (cur) => ({ ...cur, state: "approved" }) as never);
+      expect((mutated as unknown as { state: string }).state).toBe("approved");
+    });
+
     timed("create is create-if-absent: 10 concurrent creators yield exactly one winner", async () => {
       const results = await Promise.all(
         Array.from({ length: 10 }, (_, i) => pick([a, b] as const, i).create("contract-create", "the-one", { creator: i })),

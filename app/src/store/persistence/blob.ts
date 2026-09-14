@@ -147,13 +147,24 @@ export function createBlobPersistence(cfg: BlobPersistenceConfig): DocPersistenc
    */
   const urlPathOf = (pathname: string): string => pathname.split("/").map(encodeURIComponent).join("/");
 
+  /**
+   * Blob serves a document larger than roughly 1 KB compressed, and then reports a
+   * weak ETag (`W/"…"`), while `put`'s `ifMatch` only accepts the strong form. Used
+   * as read, a weak ETag makes every compare-and-swap fail however fresh the read
+   * was: in production every approval decision retried until it timed out. The
+   * opaque value is the same content hash, so the strong form is the weak one with
+   * its `W/` removed (verified against the live store at 200, 1,500 and 6,000 bytes).
+   */
+  const strongEtag = (etag: string): string => etag.replace(/^W\//, "");
+
   async function read<T>(pathname: string): Promise<Current<T> | null> {
     const res = await get(urlPathOf(pathname), { access: "private", token, useCache: false });
     if (res === null) return null;
     if (res.statusCode !== 200) throw new Error(`unexpected status ${res.statusCode} reading ${pathname}`);
     const env = parseEnvelope<T>(await new Response(res.stream).text(), pathname);
-    remember(res.blob.etag, env.w);
-    return { env, etag: res.blob.etag };
+    const etag = strongEtag(res.blob.etag);
+    remember(etag, env.w);
+    return { env, etag };
   }
 
   /** After a failed write, read what is stored. If the read also fails, the original error is more useful. */
