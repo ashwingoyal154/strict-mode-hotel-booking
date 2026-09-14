@@ -35,7 +35,14 @@ import { FIXTURE_ANCHORS, resolveAnchor } from "../supply/fixtures/anchors.ts";
 import { createFileStore, createMemoryStore, createStore } from "../store/FileStore.ts";
 import { createBlobPersistence } from "../store/persistence/blob.ts";
 import type { Store } from "../store/Store.ts";
-import { currentCorrelationId, instrumentCardIssuer, instrumentNotifier, instrumentRateSource } from "./audit.ts";
+import {
+  currentCorrelationId,
+  instrumentCardIssuer,
+  instrumentNotifier,
+  instrumentRateSource,
+  runWithPendingWrites,
+  settleWrites,
+} from "./audit.ts";
 import { createAuth, DEFAULT_ENTITY_ID } from "./auth.ts";
 import { tick } from "./cron.ts";
 import type { AppDeps } from "./deps.ts";
@@ -220,6 +227,22 @@ export function createApp(deps: AppDeps): express.Express {
   app.use(express.json({ limit: "256kb" }));
 
   const api = express.Router();
+  // Each request collects the log writes it starts; its response is held until they
+  // settle (see audit.ts). `send` covers json/html, `end` covers 204s and SSE streams.
+  api.use((_req, res, next) => {
+    const writes: Promise<unknown>[] = [];
+    const send = res.send.bind(res);
+    const end = res.end.bind(res);
+    res.send = ((body?: unknown) => {
+      void settleWrites(writes).then(() => send(body));
+      return res;
+    }) as typeof res.send;
+    res.end = ((...args: unknown[]) => {
+      void settleWrites(writes).then(() => (end as (...a: unknown[]) => unknown)(...args));
+      return res;
+    }) as unknown as typeof res.end;
+    runWithPendingWrites(writes, next);
+  });
   api.use((_req, _res, next) => {
     if (seeded) {
       next();

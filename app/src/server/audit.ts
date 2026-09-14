@@ -23,6 +23,29 @@ import type { Store } from "../store/Store.ts";
 const correlation = new AsyncLocalStorage<string>();
 
 /**
+ * Log writes started during one HTTP request. On a store where every write is a
+ * network round trip (Vercel Blob), awaiting each append before the booking logic
+ * may continue put a blocking write between every supplier call, and an approval
+ * crossed the 30s function limit. Writes now start immediately and run alongside
+ * the rest of the request; the response is held until they all settle, so the log
+ * is still complete before the traveller sees anything — and before a serverless
+ * instance may be frozen.
+ */
+const pendingWrites = new AsyncLocalStorage<Promise<unknown>[]>();
+
+/** Runs `fn` with `list` as the request's pending-write collector. */
+export function runWithPendingWrites<T>(list: Promise<unknown>[], fn: () => T): T {
+  return pendingWrites.run(list, fn);
+}
+
+/** Resolves once every write in `list`, including any started while waiting, has settled. */
+export async function settleWrites(list: Promise<unknown>[]): Promise<void> {
+  while (list.length > 0) {
+    await Promise.allSettled(list.splice(0));
+  }
+}
+
+/**
  * Groups every supplier and card call made inside `fn` under one correlation id.
  * Booking flows use the booking id, so a traveller's data export can collect the
  * log entries that belong to their bookings.
@@ -50,14 +73,25 @@ async function record<T>(
 ): Promise<T> {
   const startedAt = Date.now();
   const at = new Date().toISOString();
+  let value: T;
   try {
-    const value = await run();
-    await append(store, args, at, startedAt, describe(value), null);
-    return value;
+    value = await run();
   } catch (err) {
-    await append(store, args, at, startedAt, null, messageOf(err));
+    await track(append(store, args, at, startedAt, null, messageOf(err)));
     throw err;
   }
+  await track(append(store, args, at, startedAt, describe(value), null));
+  return value;
+}
+
+/** Inside a request, hand the write to the request's collector; outside one (cron, scripts), await it. */
+async function track(write: Promise<void>): Promise<void> {
+  const pending = pendingWrites.getStore();
+  if (pending !== undefined) {
+    pending.push(write);
+    return;
+  }
+  await write;
 }
 
 async function append(
