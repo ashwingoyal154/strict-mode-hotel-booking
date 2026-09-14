@@ -177,12 +177,13 @@ export function createApp(deps: AppDeps): express.Express {
   const searches = createSearchRegistry({ sources, routes: deps.routes, store: deps.store, now: deps.now });
 
   // Seeded once per instance before the first request is answered. Seeding is
-  // idempotent, so every cold serverless instance may safely do it.
-  const ready: Promise<void> = (deps.demo ? seedDemo(deps) : seedBase(deps)).catch((err: unknown) => {
-    // eslint-disable-next-line no-console
-    console.error("seed failed", err);
-  });
-
+  // idempotent, so every cold serverless instance may safely do it. A failure is
+  // retried on the next request rather than remembered: on serverless one network
+  // blip talking to the store must not poison an instance for its whole life.
+  const seed = (): Promise<void> => (deps.demo ? seedDemo(deps) : seedBase(deps));
+  let seeded = false;
+  let ready: Promise<void> = seed();
+  ready.catch(() => undefined);
   const policyFor = async (entityId: string): Promise<Policy> => {
     const current = await deps.store.getCurrentPolicy(entityId);
     if (current !== null) return current;
@@ -220,7 +221,26 @@ export function createApp(deps: AppDeps): express.Express {
 
   const api = express.Router();
   api.use((_req, _res, next) => {
-    ready.then(() => next(), next);
+    if (seeded) {
+      next();
+      return;
+    }
+    ready.then(
+      () => {
+        seeded = true;
+        next();
+      },
+      (err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error("seed failed; retrying on this request", err);
+        ready = seed();
+        ready.catch(() => undefined);
+        ready.then(() => {
+          seeded = true;
+          next();
+        }, next);
+      },
+    );
   });
   api.use(auth.middleware);
 
@@ -228,7 +248,16 @@ export function createApp(deps: AppDeps): express.Express {
   // never depends on this. It exists so escalation notifications go out promptly
   // on a host whose cron fires only daily. Never blocks, never fails, a request.
   let lastTick = 0;
-  const opportunistic = process.env.VITEST === undefined && process.env.SM_OPPORTUNISTIC_TICK !== "off";
+  // Off on Vercel: a cold serverless instance that scans every approval, booking and
+  // search record in the background starves the request that woke it (it pushed an
+  // approvals read past the 30s function limit). There, the daily cron plus the
+  // escalation-on-read in approvals.ts carry correctness. `SM_OPPORTUNISTIC_TICK=on`
+  // forces it anywhere; `off` disables it anywhere.
+  const tickSetting = process.env.SM_OPPORTUNISTIC_TICK;
+  const opportunistic =
+    process.env.VITEST === undefined &&
+    tickSetting !== "off" &&
+    (tickSetting === "on" || process.env.VERCEL === undefined);
   api.use((_req, _res, next) => {
     if (opportunistic && Date.now() - lastTick >= OPPORTUNISTIC_TICK_MS) {
       lastTick = Date.now();

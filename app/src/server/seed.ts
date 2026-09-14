@@ -221,11 +221,20 @@ async function upsertDemoDirectory(deps: AppDeps): Promise<Map<string, Traveller
     const managerId = spec.manager === null ? null : (people.get(spec.manager)?.id ?? null);
     const existing = await deps.store.getTravellerByEmail(normaliseEmail(spec.email));
     if (existing !== null) {
-      const next = await deps.store.mutateTraveller(existing.id, (cur) => ({
-        ...cur,
-        managerId,
-        isAdmin: cur.isAdmin || spec.isAdmin,
-      }));
+      // The demo cast is authoritative: a person who signed in before seeding finished
+      // was JIT-created with a guessed name and possibly the first-user admin flag.
+      // Write only when something actually differs, because on Blob every write is a
+      // network round trip on a cold instance.
+      const unchanged =
+        existing.managerId === managerId && existing.isAdmin === spec.isAdmin && existing.name === spec.name;
+      const next = unchanged
+        ? existing
+        : await deps.store.mutateTraveller(existing.id, (cur) => ({
+            ...cur,
+            name: spec.name,
+            managerId,
+            isAdmin: spec.isAdmin,
+          }));
       people.set(spec.key, next);
     } else {
       const created: Traveller = {
@@ -326,6 +335,15 @@ function demoBooking(args: {
 export async function seedDemo(deps: AppDeps): Promise<void> {
   if (!deps.demo) return;
   await seedBase(deps);
+  // Every cold serverless instance runs this. Once the demo stay and the pending
+  // request both exist the cast is already in place, so stop after two reads rather
+  // than re-writing the directory on every cold start: those writes are what made
+  // the first request on a new instance take twenty seconds.
+  const [pastStay, pendingStay] = await Promise.all([
+    deps.store.getBooking(DEMO_PAST_BOOKING_ID),
+    deps.store.getBooking(DEMO_PENDING_BOOKING_ID),
+  ]);
+  if (pastStay !== null && pendingStay !== null) return;
   const people = await upsertDemoDirectory(deps);
   const asha = people.get("asha");
   if (asha === undefined) return;
