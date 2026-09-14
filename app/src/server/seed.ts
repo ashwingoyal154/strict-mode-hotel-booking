@@ -359,6 +359,12 @@ export async function seedDemo(deps: AppDeps): Promise<void> {
     deps.store.getBooking(DEMO_PAST_BOOKING_ID),
     deps.store.getBooking(DEMO_PENDING_BOOKING_ID),
   ]);
+  // An instance killed between writing the demo stay and issuing its invoice leaves a
+  // settled stay with no invoice, and the stay's existence skips the seed step below
+  // for good. Issuing is idempotent, so finish the job here.
+  if (pastStay !== null && pastStay.state === "settled" && pastStay.invoiceId === null) {
+    await issueInvoiceFor(deps, pastStay, deps.now());
+  }
   if (pastStay !== null && pendingStay !== null) return;
   const people = await upsertDemoDirectory(deps);
   const asha = people.get("asha");
