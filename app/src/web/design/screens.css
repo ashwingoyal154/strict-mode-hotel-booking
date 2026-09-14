@@ -286,3 +286,252 @@
     gap: var(--s4);
   }
 }
+
+/* ---------- Results: modify mode ---------- */
+
+.results__modify {
+  color: var(--ink-2);
+}
+
+/* ---------- Trip (Slice 2) ---------- */
+
+.pending {
+  display: grid;
+  gap: var(--s4);
+}
+
+/* The hold line sits directly under the total, as one object. */
+.trip__money {
+  display: grid;
+}
+
+.trip__money .total + .hold {
+  border-color: var(--rule);
+}
+
+.trip__money:has(.hold) .total {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.justified {
+  display: grid;
+  gap: var(--s2);
+}
+
+.trip__withdraw {
+  display: grid;
+  gap: var(--s3);
+  justify-items: start;
+}
+
+.trip__docs {
+  display: grid;
+  gap: var(--s3);
+}
+
+.trip__docs-rows .decided {
+  align-items: baseline;
+}
+
+.trip__modify {
+  display: flex;
+}
+
+/* ---------- Modify ---------- */
+
+.quote-rows {
+  display: grid;
+  gap: var(--s3);
+}
+
+.quote-rows__delta {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.quote-rows__message {
+  margin: 0;
+  font-family: var(--font-machine);
+  font-size: var(--t-small);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.warnings {
+  margin: 0;
+  padding-left: var(--s5);
+  display: grid;
+  gap: var(--s2);
+}
+
+.confirm__keep {
+  justify-self: center;
+}
+
+/* ---------- Invoice: the one document that looks like paper ---------- */
+
+.invoice-screen {
+  display: grid;
+  gap: var(--s4);
+}
+
+.invoice__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: var(--measure);
+  margin: 0 auto;
+}
+
+.invoice {
+  width: 100%;
+  max-width: var(--measure);
+  margin: 0 auto;
+  background: var(--surface);
+  border: var(--hair) solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  padding: var(--s6) var(--s5);
+  display: grid;
+  gap: var(--s5);
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+.invoice__head {
+  display: grid;
+  gap: var(--s2);
+  padding-bottom: var(--s4);
+  border-bottom: var(--hair) solid var(--ink);
+}
+
+.invoice__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-h2);
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-tight);
+}
+
+.invoice__meta {
+  display: grid;
+  border-top: var(--hair) solid var(--rule);
+}
+
+.invoice__meta-row,
+.invoice__total-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s2) 0;
+  border-bottom: var(--hair) solid var(--rule);
+}
+
+.invoice__meta-row > :last-child,
+.invoice__total-row > :last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.invoice__number {
+  font-size: var(--t-small);
+  letter-spacing: var(--ls-caps);
+}
+
+.invoice__parties {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--s5);
+}
+
+.invoice__party {
+  display: grid;
+  gap: var(--s1);
+  align-content: start;
+  overflow-wrap: anywhere;
+}
+
+.invoice__party-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-base);
+  letter-spacing: var(--ls-display);
+}
+
+.invoice__addr {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--t-small);
+  letter-spacing: 0;
+  line-height: var(--lh-snug);
+  color: var(--ink-2);
+}
+
+.invoice__table-wrap {
+  overflow-x: auto;
+  border-top: var(--hair) solid var(--ink);
+  border-bottom: var(--hair) solid var(--ink);
+}
+
+.invoice__table th,
+.invoice__table td {
+  padding: var(--s2) var(--s2);
+}
+
+.invoice__table th:first-child,
+.invoice__table td:first-child {
+  padding-left: 0;
+}
+
+.invoice__table th:last-child,
+.invoice__table td:last-child {
+  padding-right: 0;
+}
+
+.invoice__table th.is-numeric {
+  text-align: right;
+}
+
+.invoice__desc {
+  white-space: normal;
+  min-width: 14ch;
+}
+
+.invoice__totals {
+  display: grid;
+}
+
+.invoice__total-row--grand {
+  border-bottom: var(--hair) solid var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-lead);
+  letter-spacing: var(--ls-display);
+}
+
+.invoice__itc {
+  margin: 0;
+  font-size: var(--t-small);
+  line-height: var(--lh-body);
+}
+
+.invoice__itc strong {
+  font-weight: 500;
+}
+
+.invoice__foot {
+  margin: 0;
+  font-size: var(--t-micro);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}

@@ -1,3 +1,4 @@
+import { createRuleIntentParser } from "../../src/intent/RuleIntentParser.ts";
 /**
  * Booking against the real fixture supply: the happy path, idempotency (A14),
  * policy enforcement at the API (A6), price parity (A3), the CSV export and the
@@ -11,7 +12,7 @@ import { createMemoryStore } from "../../src/store/FileStore.ts";
 import { createFixtureRateSources } from "../../src/supply/FixtureRateSource.ts";
 import { createLocalRouteSource } from "../../src/routing/LocalRouteSource.ts";
 import { createSandboxCardIssuer } from "../../src/payments/SandboxCardIssuer.ts";
-import { FIXTURE_ANCHORS } from "../../src/supply/fixtures/anchors.ts";
+import { FIXTURE_ANCHORS, resolveAnchor } from "../../src/supply/fixtures/anchors.ts";
 import {
   DRIFT_MARKER_SUFFIX,
   SOLD_OUT_MARKER_SUFFIX,
@@ -30,6 +31,12 @@ function deps(): AppDeps {
     routes: createLocalRouteSource(),
     issuer: createSandboxCardIssuer({ declineRate: 0 }),
     now: () => FIXED_NOW,
+    notifiers: [],
+    intentParser: createRuleIntentParser(),
+    resolveAnchor,
+    knownAnchors: FIXTURE_ANCHORS,
+    publicBaseUrl: "http://localhost:8787",
+    demo: false,
   };
 }
 
@@ -251,7 +258,16 @@ describe("policy is enforced at the API (A6)", () => {
   it("403 blocked_by_policy for an offer the results page marked blocked", async () => {
     const app = createApp(deps());
     const agent = await signIn(app, "ada@acme.test");
-    const { searchId, results } = await searchAndPick(agent);
+    // Slice 2: over cap is "over", and results show one row per hotel preferring its
+    // bookable rate, so a hotel only reads as blocked when every rate it has is
+    // blocked. Blocking the country does exactly that.
+    const current = (await agent.get("/api/admin/policy").expect(200)).body.policy;
+    const { version: _v, updatedAt: _u, updatedBy: _b, ...rest } = current;
+    await agent.put("/api/admin/policy").send({ ...rest, blockedCountries: ["IN"] }).expect(200);
+
+    const started = await agent.post("/api/search").send(QUERY).expect(202);
+    const snap = await agent.get(`/api/search/${started.body.searchId}`).expect(200);
+    const results = snap.body.results as RankedOffer[];
     const blocked = results.find(
       (r) =>
         r.verdict.state === "blocked" &&
@@ -259,12 +275,13 @@ describe("policy is enforced at the API (A6)", () => {
         !r.offer.rate.id.endsWith(SOLD_OUT_MARKER_SUFFIX),
     );
     expect(blocked).toBeDefined();
+    expect(blocked?.verdict.reasonCode).toBe("blocked_country");
 
     const res = await agent
       .post("/api/bookings")
       .set("Idempotency-Key", "blocked-offer-key-0000001")
       .send({
-        searchId,
+        searchId: started.body.searchId,
         offerId: blocked!.offer.rate.id,
         acceptedTotal: blocked!.offer.rate.allInTotal,
       })

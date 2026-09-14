@@ -1,19 +1,15 @@
 /**
- * Vercel serverless entry. The Express app is exported as the function handler.
+ * Vercel serverless entry. The Express app is the function handler.
  *
- * Serverless constraints this deployment lives under:
- *  - the filesystem is read-only, so the Store must be in-memory
- *  - each invocation may be a different instance, so nothing may rely on
- *    process memory surviving between requests
- *
- * The second constraint is the interesting one, and it is why search had to
- * become stateless (see src/server/search.ts). Fixture supply is deterministic,
- * so a searchId carries its own query and any instance can recompute the
- * identical result set rather than look one up.
+ * `buildDefaultDeps` picks the Blob store automatically on Vercel, so bookings,
+ * approvals and invoices survive across instances. Search needs no shared state at
+ * all: a searchId is signed and self-describing, and any instance can recompute it
+ * (src/server/search.ts). With SM_DEMO=1, `createApp` seeds the demo cast once per
+ * cold instance, idempotently.
  */
-import { createApp, buildDefaultDeps } from "../src/server/index.ts";
+import { buildDefaultDeps, createApp } from "./server/index.ts";
 
-const app = createApp(buildDefaultDeps({ memory: true }));
+const app = createApp(buildDefaultDeps());
 app.set("trust proxy", 1);
 
 export default app;

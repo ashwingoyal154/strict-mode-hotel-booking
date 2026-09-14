@@ -127,3 +127,99 @@ reachable with a visible 2px accent focus ring. Verdict is never conveyed by
 colour alone — the chip always carries its word. Body contrast ≥ 4.5:1 in both
 themes. `prefers-reduced-motion` removes the settle transition. The source meter
 is `aria-live="polite"`; results announce their count, not each card.
+
+---
+
+# Slice 2 additions
+
+Slice 2 adds the states where the machine cannot simply decide: a rate over
+cap, an approval racing a moving price, a trip abroad in another currency, and
+a tax document. The eight rules above still hold. What follows is how they apply
+to the new surfaces.
+
+### The third verdict is real now
+
+`Over cap` is no longer a variant of blocked. It sits in the ranked list, is
+numbered, and carries the amber `over` token plus its arithmetic. Only `Blocked`
+stays behind the disclosure. Tapping an over-cap card leads to a request, not a
+booking, and every surface says so in words. Colour is never the only signal.
+
+### Time is a first-class value
+
+An approval is a race against a moving rate, so its clock is shown the same way
+everywhere, in machine voice:
+
+- **SLA line** — `Meera Iyer · decides by 4:10 pm · 1h 42m left`, with a single
+  hairline beneath it that empties as time passes. It turns `over` in the last 25%
+  and `blocked` once breached. It never animates faster than once a minute.
+- **Escalation ladder** — a vertical list of the approver chain: past levels
+  struck through in muted mono with the time they were passed over, the current
+  level at full ink, future levels faint. It is the audit trail made visible.
+
+### Never claim a hold that does not exist
+
+The hold line sits directly under the total on a pending request, and it takes
+exactly one of two forms:
+
+- `Held until 6:00 pm · the price above is guaranteed until then`
+- `Not held · this hotel can't hold rates, so the price may move before approval`
+
+The second is in the `over` tone. An approval that wins after the rate moved gets
+its own designed outcome: `Approved — but the rate moved from ₹42,380 to ₹44,100.
+Nothing was booked.` It comes with a way back to results, never an error screen.
+
+### Two currencies, one honest number
+
+Abroad, the supplier currency is the number the hotel charges, so it leads:
+`£1,648` at full total size. The reporting-currency equivalent sits beside it in
+muted machine voice with an approximation mark that is also spelled out for
+screen readers: `≈ ₹1,75,100 · Sep pinned rate`. A converted figure is never
+typeset as large as a real one. The pinned month is always named, because a rate
+with no date is a guess.
+
+### Chat entry is a field, not a conversation
+
+One line on Search: `Or ask in a sentence`. No bubbles and no transcript. After
+submission the product answers with a machine-voice read-back of what it
+understood (`Understood · BKC, Mumbai · Tue 15 – Fri 18 Sep · 1 guest · in
+policy`), then one `Search` button. When something is missing it asks exactly one
+question, offered as square chips, and the traveller answers with a tap. Chat
+never shows a price and never has a button that books.
+
+### The invoice is the one document
+
+The GST invoice is the only screen that should look like paper. It is a single
+ruled column at `--measure` width, set in tabular machine voice. The number, GSTINs
+and place of supply sit at the top, then a line table (description · SAC ·
+taxable · rate · CGST · SGST · total), then the totals. Beneath the totals is one
+sentence on input tax credit, stated as a verdict with its reason:
+`ITC not claimable — the 5% slab carries no input tax credit.`
+It prints cleanly: `@media print` hides the app shell.
+
+### Approver surfaces are decisions, not dashboards
+
+The approvals inbox shows one card per request with the overage arithmetic, the
+traveller's justification quoted in serif (a human wrote it), the SLA line, and
+two actions. `Approve` is the primary. `Reject` is quiet, and choosing it reveals a
+required note field before it can submit. The one-tap page reached from a
+notification is the same card and nothing else.
+
+### Admin gains four quiet tables
+
+Exceptions, travellers in market tonight, the directory, and FX pins. They share
+one table style: hairline rows, mono figures right-aligned, and a state chip in the
+first column. Duty of care leads with the count by country. A `high` advisory row
+takes the `blocked` stripe.
+
+### Demo personas
+
+When the demo flag is on, sign-in offers three square persona chips (traveller,
+manager, admin) under the email field, each with a one-line machine-voice role.
+The demo bar stays.
+
+### Tokens
+
+`tokens.css` is unchanged and remains read-only. If a Slice 2 surface genuinely
+needs a new token, it goes in `src/web/design/tokens-slice2.css`, imported after
+`tokens.css`, defined for light, `prefers-color-scheme: dark` and `data-theme="dark"`
+exactly as the base file does.

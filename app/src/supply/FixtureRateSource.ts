@@ -4,30 +4,46 @@
  * sources" meter has real behaviour to show (SPEC.md §3.1 — fan out in
  * parallel, stream results, never block on the slowest).
  *
+ * Slice 2 adds holds. Two of the four sources can hold a rate while an approval
+ * is pending; the other two cannot, so the "never claim a hold that does not
+ * exist" path is exercised by ordinary searches, not only by tests.
+ *
+ * Holds are stateless: a holdRef carries the offer, source, held total and expiry
+ * inside itself. Production runs on serverless, where the instance that took the
+ * hold is rarely the instance that books against it. A fixture has no inventory
+ * to protect, so the ref is encoded rather than signed; a live supplier's ref is
+ * opaque and enforced on its side.
+ *
  * No booking, policy, billing or UI code may know this is a fixture — it only
  * ever sees the RateSource interface.
  */
 import { randomUUID } from "node:crypto";
-import type { Offer, OfferId, Rate, RateComponent, SearchQuery } from "../core/types.ts";
-import { money } from "../core/money.ts";
+import type { IsoDateTime, Money, Offer, OfferId, Property, Rate, SearchQuery } from "../core/types.ts";
 import type {
   RateSource,
+  RateSourceCapabilities,
   SupplierBookRequest,
   SupplierBooking,
+  SupplierHold,
+  SupplierHoldRequest,
 } from "./RateSource.ts";
-import { SupplierPriceDriftError, SupplierSoldOutError } from "./RateSource.ts";
-import { FIXTURE_PROPERTIES, propertiesNear } from "./fixtures/properties.ts";
-import { ratesFor } from "./fixtures/rates.ts";
+import {
+  SupplierHoldExpiredError,
+  SupplierHoldUnsupportedError,
+  SupplierPriceDriftError,
+  SupplierSoldOutError,
+} from "./RateSource.ts";
+import { CANARY_PROPERTY_IDS, FIXTURE_PROPERTIES, propertiesNear } from "./fixtures/properties.ts";
+import { FIXTURE_HOLD_MINUTES, driftedRate, hashString, ratesFor } from "./fixtures/rates.ts";
 import {
   DRIFT_MARKER_SUFFIX,
+  LATE_DRIFT_MARKER_SUFFIX,
   SOLD_OUT_MARKER_SUFFIX,
   defaultChaos,
   type ChaosConfig,
 } from "./fixtures/adversarial.ts";
 
 const SEARCH_RADIUS_METERS = 20_000; // covers the 200m–14km fixture spread
-const GST_RATE = 0.12;
-const SERVICE_FEE_RATE = 0.025;
 
 interface SourceSpec {
   readonly id: string;
@@ -45,22 +61,14 @@ const SOURCE_SPECS: readonly SourceSpec[] = [
 /** A very long "never answers in time" delay for simulated timeouts. */
 const TIMEOUT_HANG_MS = 30_000;
 
-const propertyById = new Map(FIXTURE_PROPERTIES.map((p) => [p.id, p]));
+const HOLD_REF_PREFIX = "fxhold.";
 
-function hashString(input: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
+const propertyById = new Map(FIXTURE_PROPERTIES.map((p) => [p.id, p]));
+const canaryIds = new Set<string>(Object.values(CANARY_PROPERTY_IDS));
 
 /** Canaries are always visible everywhere; other properties are ~70% per source. */
 function includedInSource(propertyId: string, sourceId: string): boolean {
-  if (propertyId === "prop-bkc-canary-drift" || propertyId === "prop-bkc-canary-soldout") {
-    return true;
-  }
+  if (canaryIds.has(propertyId)) return true;
   return hashString(`${propertyId}|${sourceId}`) % 100 < 70;
 }
 
@@ -93,43 +101,21 @@ function isSoldOut(offerId: OfferId, chaos: ChaosConfig): boolean {
   return offerId.endsWith(SOLD_OUT_MARKER_SUFFIX) || (chaos.enabled && chaos.soldOutOfferIds.includes(offerId));
 }
 
+/** Drifts at price check AND at book. */
 function isDrifted(offerId: OfferId, chaos: ChaosConfig): boolean {
   return offerId.endsWith(DRIFT_MARKER_SUFFIX) || (chaos.enabled && chaos.driftOfferIds.includes(offerId));
 }
 
-/** Rebuilds a rate at a bumped base price; components still sum exactly. */
-function applyDrift(rate: Rate): Rate {
-  const baseComponent = rate.components.find((c) => c.kind === "base");
-  const baseMinor = baseComponent ? baseComponent.amount.minor : rate.allInTotal.minor;
-  const includeFee = rate.components.some((c) => c.kind === "fee");
-
-  const newBaseMinor = Math.round(baseMinor * 1.08);
-  const gstMinor = Math.round(newBaseMinor * GST_RATE);
-  const feeMinor = includeFee ? Math.round(newBaseMinor * SERVICE_FEE_RATE) : 0;
-
-  const components: RateComponent[] = [
-    { kind: "base", label: "Room charge", amount: money(newBaseMinor, rate.currency) },
-    { kind: "tax", label: "GST (12%)", amount: money(gstMinor, rate.currency) },
-  ];
-  if (feeMinor > 0) {
-    components.push({ kind: "fee", label: "Service fee", amount: money(feeMinor, rate.currency) });
-  }
-  const allInTotalMinor = components.reduce((sum, c) => sum + c.amount.minor, 0);
-  const perNightMinor = Math.floor(allInTotalMinor / rate.nights);
-
-  return {
-    ...rate,
-    components,
-    allInTotal: money(allInTotalMinor, rate.currency),
-    perNight: money(perNightMinor, rate.currency),
-  };
+/** Stable at price check, drifts only when booked without a hold. */
+function isLateDrifted(offerId: OfferId): boolean {
+  return offerId.endsWith(LATE_DRIFT_MARKER_SUFFIX);
 }
 
 function propertyIdFromOfferId(offerId: OfferId): string {
   return offerId.split("~")[0] ?? offerId;
 }
 
-function findRate(offerId: OfferId, query: SearchQuery, sourceId: string): { property: (typeof FIXTURE_PROPERTIES)[number]; rate: Rate } | null {
+function findRate(offerId: OfferId, query: SearchQuery, sourceId: string): { property: Property; rate: Rate } | null {
   const property = propertyById.get(propertyIdFromOfferId(offerId));
   if (!property) return null;
   const rate = ratesFor(property, query, sourceId).find((r) => r.id === offerId);
@@ -137,10 +123,59 @@ function findRate(offerId: OfferId, query: SearchQuery, sourceId: string): { pro
   return { property, rate };
 }
 
-function makeSource(spec: SourceSpec, chaos: ChaosConfig): RateSource {
+interface HoldClaims {
+  readonly offerId: OfferId;
+  readonly sourceId: string;
+  readonly heldTotal: Money;
+  readonly heldUntil: IsoDateTime;
+}
+
+function encodeHold(claims: HoldClaims): string {
+  return HOLD_REF_PREFIX + Buffer.from(JSON.stringify(claims), "utf8").toString("base64url");
+}
+
+function decodeHold(ref: string): HoldClaims | null {
+  if (!ref.startsWith(HOLD_REF_PREFIX)) return null;
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(ref.slice(HOLD_REF_PREFIX.length), "base64url").toString("utf8"));
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const c = parsed as Partial<HoldClaims>;
+    if (
+      typeof c.offerId !== "string" ||
+      typeof c.sourceId !== "string" ||
+      typeof c.heldUntil !== "string" ||
+      typeof c.heldTotal?.minor !== "number" ||
+      typeof c.heldTotal.currency !== "string"
+    ) {
+      return null;
+    }
+    return { offerId: c.offerId, sourceId: c.sourceId, heldTotal: c.heldTotal, heldUntil: c.heldUntil };
+  } catch {
+    return null;
+  }
+}
+
+function makeSource(spec: SourceSpec, chaos: ChaosConfig, now: () => Date): RateSource {
+  const maxHoldMinutes = FIXTURE_HOLD_MINUTES[spec.id] ?? 0;
+  const capabilities: RateSourceCapabilities = {
+    holds: maxHoldMinutes > 0,
+    maxHoldMinutes,
+    live: false,
+    currencies: "any",
+  };
+
+  /** The authoritative current offer, applying the drift canaries that bite at price check. */
+  function current(offerId: OfferId, query: SearchQuery): Offer | null {
+    const found = findRate(offerId, query, spec.id);
+    if (!found || isSoldOut(offerId, chaos)) return null;
+    if (isDrifted(offerId, chaos)) return { property: found.property, rate: driftedRate(found.rate, found.property) };
+    return found;
+  }
+
   return {
     id: spec.id,
     displayName: spec.displayName,
+    capabilities,
 
     async searchAvailability(query: SearchQuery, signal: AbortSignal): Promise<Offer[]> {
       const timedOut = chaos.enabled && chaos.timeoutSourceIds.includes(spec.id);
@@ -163,22 +198,55 @@ function makeSource(spec: SourceSpec, chaos: ChaosConfig): RateSource {
     },
 
     async priceCheck(offerId: OfferId, query: SearchQuery): Promise<Offer | null> {
-      const found = findRate(offerId, query, spec.id);
-      if (!found) return null;
-      if (isSoldOut(offerId, chaos)) return null;
-      if (isDrifted(offerId, chaos)) {
-        return { property: found.property, rate: applyDrift(found.rate) };
-      }
-      return found;
+      return current(offerId, query);
+    },
+
+    async hold(req: SupplierHoldRequest): Promise<SupplierHold> {
+      if (!capabilities.holds) throw new SupplierHoldUnsupportedError(`${spec.displayName} cannot hold rates`);
+      const offer = current(req.offerId, req.query);
+      if (offer === null) throw new SupplierSoldOutError();
+      if (!offer.rate.holdable) throw new SupplierHoldUnsupportedError("this rate cannot be held");
+
+      const minutes = Math.max(1, Math.min(req.minutes, maxHoldMinutes));
+      const heldUntil = new Date(now().getTime() + minutes * 60_000).toISOString();
+      const heldTotal = offer.rate.allInTotal;
+      return {
+        holdRef: encodeHold({ offerId: req.offerId, sourceId: spec.id, heldTotal, heldUntil }),
+        heldTotal,
+        heldUntil,
+      };
+    },
+
+    async releaseHold(_holdRef: string): Promise<void> {
+      // Stateless holds lapse on their own; there is nothing to release supplier-side.
     },
 
     async book(req: SupplierBookRequest): Promise<SupplierBooking> {
       const found = findRate(req.offerId, req.query, spec.id);
-      if (!found || isSoldOut(req.offerId, chaos)) {
-        throw new SupplierSoldOutError();
+      if (!found) throw new SupplierSoldOutError();
+
+      if (req.holdRef !== null) {
+        const claims = decodeHold(req.holdRef);
+        if (
+          claims === null ||
+          claims.offerId !== req.offerId ||
+          claims.sourceId !== spec.id ||
+          now().getTime() > Date.parse(claims.heldUntil)
+        ) {
+          throw new SupplierHoldExpiredError(req.holdRef);
+        }
+        // A valid hold is a price guarantee: it beats every drift canary.
+        return {
+          supplierBookingRef: `sbk_${randomUUID()}`,
+          confirmedTotal: claims.heldTotal,
+          cancellationDeadline: found.rate.refundableUntil,
+          checkInTime: "14:00",
+        };
       }
-      if (isDrifted(req.offerId, chaos)) {
-        const drifted = applyDrift(found.rate);
+
+      if (isSoldOut(req.offerId, chaos)) throw new SupplierSoldOutError();
+      if (isDrifted(req.offerId, chaos) || isLateDrifted(req.offerId)) {
+        const drifted = driftedRate(found.rate, found.property);
         throw new SupplierPriceDriftError(drifted.allInTotal, req.authorisedTotal);
       }
       return {
@@ -195,8 +263,9 @@ function makeSource(spec: SourceSpec, chaos: ChaosConfig): RateSource {
   };
 }
 
-/** Exactly four fixture sources — see SOURCE_SPECS for ids/displayNames/latencies. */
-export function createFixtureRateSources(opts?: { chaos?: ChaosConfig }): RateSource[] {
+/** Exactly four fixture sources — see SOURCE_SPECS for ids, names and latencies. */
+export function createFixtureRateSources(opts?: { chaos?: ChaosConfig; now?: () => Date }): RateSource[] {
   const chaos = opts?.chaos ?? defaultChaos();
-  return SOURCE_SPECS.map((spec) => makeSource(spec, chaos));
+  const now = opts?.now ?? (() => new Date());
+  return SOURCE_SPECS.map((spec) => makeSource(spec, chaos, now));
 }

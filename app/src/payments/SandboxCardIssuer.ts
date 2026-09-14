@@ -3,6 +3,10 @@
  * even a fake one — because A13 is verified by scanning the codebase and logs
  * for card-like digit runs. The IssuedCard type carries only a tokenRef and a
  * last4 derived from a hash; nothing here can regress that by construction.
+ *
+ * Slice 2: honours the stay window. The card is valid from `validFrom` to
+ * `validUntil` and expires at the end of `validUntil`'s month, so the card
+ * cannot outlive the trip it was issued for.
  */
 import { randomUUID } from "node:crypto";
 import type { IssuedCard } from "../core/types.ts";
@@ -10,6 +14,8 @@ import type { CardIssuer, IssueCardRequest } from "./CardIssuer.ts";
 import { CardDeclinedError } from "./CardIssuer.ts";
 
 const FICTITIOUS_NETWORK_BRAND = "Sandbox Network";
+const ISSUER_ID = "sandbox-card-issuer";
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function hashString(input: string): number {
   let h = 0x811c9dc5;
@@ -43,9 +49,13 @@ export function createSandboxCardIssuer(opts: SandboxCardIssuerOptions = {}): Ca
   const voided = new Set<string>();
 
   return {
-    id: "sandbox-card-issuer",
+    id: ISSUER_ID,
+    capabilities: { live: false, currencies: "any" },
 
     async issue(req: IssueCardRequest): Promise<IssuedCard> {
+      if (!ISO_DATE.test(req.validFrom) || !ISO_DATE.test(req.validUntil) || req.validUntil < req.validFrom) {
+        throw new CardDeclinedError("invalid_validity_window");
+      }
       if (declineAll || alwaysDeclineRefs.has(req.reference)) {
         throw new CardDeclinedError("test_forced_decline");
       }
@@ -59,20 +69,18 @@ export function createSandboxCardIssuer(opts: SandboxCardIssuerOptions = {}): Ca
       // tok_<uuid> — hyphenated, never a bare run of digits long enough to
       // read as a PAN, and never derived from or containing card data.
       const tokenRef = `tok_${randomUUID()}`;
-      const last4 = last4From(tokenRef);
-
-      const now = new Date();
-      const expYear = now.getUTCFullYear() + 3;
-      const expMonth = (hashString(tokenRef) % 12) + 1;
 
       return {
         tokenRef,
-        last4,
+        last4: last4From(tokenRef),
         brand: FICTITIOUS_NETWORK_BRAND,
-        expMonth,
-        expYear,
+        expMonth: Number(req.validUntil.slice(5, 7)),
+        expYear: Number(req.validUntil.slice(0, 4)),
         authorisedTotal: req.exactTotal,
         incidentalsBufferMinor: req.incidentalsBufferMinor,
+        issuerId: ISSUER_ID,
+        validFrom: req.validFrom,
+        validUntil: req.validUntil,
       };
     },
 

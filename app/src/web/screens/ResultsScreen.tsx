@@ -21,7 +21,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import type { Anchor, RankedOffer, SearchQuery } from "../../core/types.ts";
 import {
   getSearch,
@@ -73,6 +73,9 @@ interface SourceState {
 export function ResultsScreen(): JSX.Element {
   const { searchId = "" } = useParams<{ searchId: string }>();
   const handoff = readHandoff(useLocation().state);
+  // Modify reuses this stream: the cards then lead to a change quote, not to Confirm.
+  const [params] = useSearchParams();
+  const modifyId = params.get("modify");
 
   const [descriptors, setDescriptors] = useState<readonly SourceDescriptor[]>(
     handoff?.sources ?? [],
@@ -190,6 +193,13 @@ export function ResultsScreen(): JSX.Element {
 
   const bookable = useMemo(() => results.filter((r) => r.verdict.state !== "blocked"), [results]);
   const blocked = useMemo(() => results.filter((r) => r.verdict.state === "blocked"), [results]);
+  const overCount = bookable.filter((r) => r.verdict.state === "over").length;
+  const inCount = bookable.length - overCount;
+
+  const hrefFor = (offerId: string): string =>
+    modifyId === null
+      ? `/confirm/${encodeURIComponent(searchId)}/${encodeURIComponent(offerId)}`
+      : `/trip/${encodeURIComponent(modifyId)}/modify/${encodeURIComponent(searchId)}/${encodeURIComponent(offerId)}`;
 
   const pending = meterSources.filter((s) => s.status === "pending").length;
   const settled = done !== null;
@@ -228,6 +238,20 @@ export function ResultsScreen(): JSX.Element {
             &middot; {plural(query.guests, "guest")} &middot; {plural(query.rooms, "room")}
           </p>
         ) : null}
+        {bookable.length > 0 ? (
+          <p className="mono mono--muted">
+            {inCount} in policy
+            {overCount > 0 ? ` · ${overCount} over cap, bookable only with approval` : ""}
+          </p>
+        ) : null}
+        {modifyId !== null ? (
+          <p className="mono results__modify">
+            changing a booking &middot; pick the new stay &middot;{" "}
+            <Link className="btn-text" to={`/trip/${encodeURIComponent(modifyId)}`}>
+              keep the current one
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       <SourceMeter
@@ -262,7 +286,7 @@ export function ResultsScreen(): JSX.Element {
           <li key={r.offer.rate.id}>
             <OfferCard
               ranked={r}
-              href={`/confirm/${encodeURIComponent(searchId)}/${encodeURIComponent(r.offer.rate.id)}`}
+              href={hrefFor(r.offer.rate.id)}
               settling={settling.has(r.offer.rate.id)}
             />
           </li>
@@ -282,7 +306,10 @@ export function ResultsScreen(): JSX.Element {
               ? "Everything near this anchor is blocked by your policy. The reasons are below."
               : "No source had anything near this anchor for these dates."}
           </p>
-          <Link to="/" className="btn">
+          <Link
+            to={modifyId === null ? "/" : `/trip/${encodeURIComponent(modifyId)}/modify`}
+            className="btn"
+          >
             Change the anchor or the dates
           </Link>
         </div>

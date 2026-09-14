@@ -1,3 +1,5 @@
+import { createRuleIntentParser } from "../../src/intent/RuleIntentParser.ts";
+import { FIXTURE_ANCHORS, resolveAnchor } from "../../src/supply/fixtures/anchors.ts";
 /**
  * Auth, ops and admin-authorisation behaviour.
  */
@@ -19,6 +21,12 @@ function deps(): AppDeps {
     routes: createLocalRouteSource(),
     issuer: createSandboxCardIssuer(),
     now: () => FIXED_NOW,
+    notifiers: [],
+    intentParser: createRuleIntentParser(),
+    resolveAnchor,
+    knownAnchors: FIXTURE_ANCHORS,
+    publicBaseUrl: "http://localhost:8787",
+    demo: false,
   };
 }
 
@@ -187,7 +195,11 @@ describe("ops", () => {
     }
 
     const version = await request(app).get("/api/version").expect(200);
-    expect(version.body.slice).toBe(1);
+    // Slice 2 reports itself, the evaluator that produces verdicts, and which
+    // adapters are live — fixture supply and the sandbox issuer are not.
+    expect(version.body.slice).toBe(2);
+    expect(version.body.evaluatorVersion).toBe(2);
+    expect(health.body.sources.every((s: { live: boolean }) => s.live === false)).toBe(true);
     expect(typeof version.body.version).toBe("string");
     expect(version.body.policyVersion).toBe(1);
   });

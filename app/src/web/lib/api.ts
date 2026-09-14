@@ -8,10 +8,20 @@
 
 import type {
   Anchor,
+  ApprovalRequest,
   Booking,
+  CardEvent,
+  Currency,
+  Invoice,
   IsoDate,
   IsoDateTime,
+  IsoMonth,
+  JustificationReason,
+  LegalEntity,
+  ModifyQuote,
   Money,
+  NotificationRecord,
+  ParsedIntent,
   Policy,
   PolicyVerdict,
   PriceDriftDetail,
@@ -70,13 +80,18 @@ function readErrorBody(body: unknown): { code: string; message: string; detail: 
 
 // ---------- transport ----------
 
-interface RequestOptions {
-  readonly method?: "GET" | "POST" | "PUT";
+export interface RequestOptions {
+  readonly method?: "GET" | "POST" | "PUT" | "DELETE";
   readonly body?: unknown;
   readonly headers?: Readonly<Record<string, string>>;
 }
 
-async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
+/**
+ * The one transport. Exported so every screen's calls — traveller, approver and
+ * admin alike — share the same error type and the same unreachable-server case.
+ * `path` is relative to `/api`.
+ */
+export async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json", ...opts.headers };
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
 
@@ -134,8 +149,42 @@ export async function logout(): Promise<void> {
   await request<void>("/auth/logout", { method: "POST" });
 }
 
-export async function me(): Promise<{ traveller: Traveller }> {
-  return request<{ traveller: Traveller }>("/me");
+/** Slice 2: `/api/me` also carries the entity, the approver's inbox count and the demo flag. */
+export interface MeResponse {
+  readonly traveller: Traveller;
+  readonly entity?: LegalEntity | null;
+  readonly approvalsPending?: number;
+  readonly demo?: boolean;
+}
+
+export async function me(): Promise<MeResponse> {
+  return request<MeResponse>("/me");
+}
+
+export interface DemoPersona {
+  readonly email: string;
+  readonly name: string;
+  readonly role: string;
+  readonly blurb: string;
+}
+
+export async function getDemoPersonas(): Promise<{
+  enabled: boolean;
+  personas: readonly DemoPersona[];
+}> {
+  return request<{ enabled: boolean; personas: readonly DemoPersona[] }>("/auth/demo-personas");
+}
+
+// ---------- chat entry ----------
+
+export interface IntentResponse {
+  readonly intent: ParsedIntent;
+  readonly searchRequest: CreateSearchBody | null;
+}
+
+/** Never books, has no path to booking, and never returns a price. */
+export async function parseIntent(text: string): Promise<IntentResponse> {
+  return request<IntentResponse>("/intent", { method: "POST", body: { text } });
 }
 
 // ---------- search ----------
@@ -151,6 +200,8 @@ export interface CreateSearchBody {
   readonly checkOut: IsoDate;
   readonly guests: number;
   readonly rooms: number;
+  /** Slice 2, optional: defaults to the traveller's, then the entity reporting currency. */
+  readonly displayCurrency?: Currency;
 }
 
 export interface SearchCreated {
@@ -158,6 +209,8 @@ export interface SearchCreated {
   readonly anchor: Anchor;
   readonly query: SearchQuery;
   readonly sources: readonly SourceDescriptor[];
+  readonly displayCurrency?: Currency;
+  readonly fxPinMonth?: IsoMonth | null;
 }
 
 export interface SearchSnapshot {
@@ -257,12 +310,47 @@ export function subscribeSearch(searchId: string, handlers: SearchStreamHandlers
 
 // ---------- bookings ----------
 
+export interface Justification {
+  readonly code: string;
+  readonly text: string;
+}
+
 export interface CreateBookingBody {
   readonly searchId: string;
   readonly offerId: string;
   readonly costCentre: string;
   readonly acceptedTotal: Money;
+  /** Ignored for `in` offers, required for `over` offers. */
+  readonly justification?: Justification;
 }
+
+// ---------- approvals (the shape the traveller's trip page reads) ----------
+
+export interface ApprovalPerson {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+  readonly level: number;
+}
+
+export interface ApprovalSla {
+  readonly level: number;
+  readonly approverId: string;
+  readonly approverName: string;
+  readonly dueAt: IsoDateTime;
+  readonly remainingMs: number;
+  readonly breached: boolean;
+  readonly atTop: boolean;
+  readonly nextApproverName: string | null;
+}
+
+/** `ApprovalRequest` plus the resolved chain and the SLA as of the read. */
+export type ApprovalView = ApprovalRequest & {
+  readonly booking: Booking;
+  readonly traveller: { readonly id: string; readonly name: string; readonly email: string };
+  readonly approvers: readonly ApprovalPerson[];
+  readonly sla: ApprovalSla;
+};
 
 /** A fresh key per confirm intent. Reused verbatim when retrying the same intent. */
 export function newIdempotencyKey(): string {
@@ -279,11 +367,16 @@ export function newIdempotencyKey(): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+/**
+ * `201 { booking, approval: null }` for an in-policy rate; `202 { booking, approval }`
+ * with `booking.state = "pending_approval"` for an over-cap request. The two are told
+ * apart by the body, never by guessing from the status.
+ */
 export async function createBooking(
   body: CreateBookingBody,
   idempotencyKey: string,
-): Promise<{ booking: Booking }> {
-  return request<{ booking: Booking }>("/bookings", {
+): Promise<{ booking: Booking; approval?: ApprovalView | null }> {
+  return request<{ booking: Booking; approval?: ApprovalView | null }>("/bookings", {
     method: "POST",
     body,
     headers: { "Idempotency-Key": idempotencyKey },
@@ -294,14 +387,91 @@ export async function listBookings(): Promise<{ bookings: readonly Booking[] }> 
   return request<{ bookings: readonly Booking[] }>("/bookings");
 }
 
-export async function getBooking(id: string): Promise<{ booking: Booking }> {
-  return request<{ booking: Booking }>(`/bookings/${encodeURIComponent(id)}`);
+export interface BookingRead {
+  readonly booking: Booking;
+  readonly approval?: ApprovalView | null;
+  readonly invoice?: Invoice | null;
+}
+
+export async function getBooking(id: string): Promise<BookingRead> {
+  return request<BookingRead>(`/bookings/${encodeURIComponent(id)}`);
 }
 
 export async function cancelBooking(id: string): Promise<{ booking: Booking }> {
   return request<{ booking: Booking }>(`/bookings/${encodeURIComponent(id)}/cancel`, {
     method: "POST",
   });
+}
+
+/** Withdraw a pending request. Releases the hold. `409 not_pending` once decided. */
+export async function withdrawBooking(
+  id: string,
+): Promise<{ booking: Booking; approval: ApprovalView | null }> {
+  return request<{ booking: Booking; approval: ApprovalView | null }>(
+    `/bookings/${encodeURIComponent(id)}/withdraw`,
+    { method: "POST" },
+  );
+}
+
+export async function quoteModify(
+  id: string,
+  body: { readonly searchId: string; readonly offerId: string },
+): Promise<{ quote: ModifyQuote }> {
+  return request<{ quote: ModifyQuote }>(`/bookings/${encodeURIComponent(id)}/modify/quote`, {
+    method: "POST",
+    body,
+  });
+}
+
+export interface ModifyResult {
+  readonly booking: Booking;
+  readonly replaced: Booking;
+  readonly warnings: readonly string[];
+}
+
+export async function modifyBooking(
+  id: string,
+  body: { readonly searchId: string; readonly offerId: string; readonly acceptedNewTotal: Money },
+  idempotencyKey: string,
+): Promise<ModifyResult> {
+  return request<ModifyResult>(`/bookings/${encodeURIComponent(id)}/modify`, {
+    method: "POST",
+    body,
+    headers: { "Idempotency-Key": idempotencyKey },
+  });
+}
+
+/** `404 invoice_not_ready` until checkout has passed — read it with `asInvoiceNotReady`. */
+export async function getInvoice(id: string): Promise<{ invoice: Invoice }> {
+  return request<{ invoice: Invoice }>(`/bookings/${encodeURIComponent(id)}/invoice`);
+}
+
+/** A real href: the letter is `text/html` for the hotel, opened by the browser. */
+export function authorisationLetterHref(id: string): string {
+  return `${BASE}/bookings/${encodeURIComponent(id)}/authorisation-letter`;
+}
+
+export async function reportCardDeclined(
+  id: string,
+  note?: string,
+): Promise<{ cardEvent: CardEvent }> {
+  const body: { note?: string } = {};
+  if (note !== undefined && note.trim().length > 0) body.note = note.trim();
+  return request<{ cardEvent: CardEvent }>(`/bookings/${encodeURIComponent(id)}/card-declined`, {
+    method: "POST",
+    body,
+  });
+}
+
+// ---------- notifications ----------
+
+export async function listNotifications(): Promise<{
+  notifications: readonly NotificationRecord[];
+  unread: number;
+}> {
+  return request<{ notifications: readonly NotificationRecord[]; unread: number }>(
+    "/notifications",
+  );
 }
 
 // ---------- admin ----------
@@ -345,9 +515,64 @@ export function asVerdict(detail: unknown): PolicyVerdict | null {
   if (!isRecord(verdict)) return null;
   const state = verdict["state"];
   const reason = verdict["reason"];
-  if (state !== "in" && state !== "blocked") return null;
+  if (state !== "in" && state !== "over" && state !== "blocked") return null;
   if (typeof reason !== "string") return null;
   return verdict as unknown as PolicyVerdict;
+}
+
+export interface JustificationRequiredDetail {
+  readonly verdict: PolicyVerdict | null;
+  readonly reasons: readonly JustificationReason[];
+  readonly message: string | null;
+  /**
+   * Not in the frozen contract. Read only if the server volunteers them, in the
+   * same shapes `ApprovalView` uses, so Confirm can name the approver before
+   * submitting. Absent is the expected case.
+   */
+  readonly approvers: readonly { readonly name: string; readonly level: number }[];
+  readonly slaMinutes: number | null;
+}
+
+/** `422 justification_required` · `detail: { verdict, reasons, message? }`. */
+export function asJustificationRequired(detail: unknown): JustificationRequiredDetail | null {
+  if (!isRecord(detail)) return null;
+  const raw = detail["reasons"];
+  if (!Array.isArray(raw)) return null;
+  const reasons: JustificationReason[] = [];
+  for (const r of raw) {
+    if (isRecord(r) && typeof r["code"] === "string" && typeof r["label"] === "string") {
+      reasons.push({ code: r["code"], label: r["label"] });
+    }
+  }
+  const message = detail["message"];
+  const approversRaw = detail["approvers"];
+  const approvers: { name: string; level: number }[] = [];
+  if (Array.isArray(approversRaw)) {
+    for (const a of approversRaw) {
+      if (isRecord(a) && typeof a["name"] === "string" && typeof a["level"] === "number") {
+        approvers.push({ name: a["name"], level: a["level"] });
+      }
+    }
+  }
+  const sla = detail["slaMinutes"];
+  return {
+    verdict: asVerdict(detail),
+    reasons,
+    message: typeof message === "string" && message.length > 0 ? message : null,
+    approvers,
+    slaMinutes: typeof sla === "number" && sla > 0 ? sla : null,
+  };
+}
+
+/** `404 invoice_not_ready` · `detail: { availableAfter, message }`. */
+export function asInvoiceNotReady(
+  detail: unknown,
+): { readonly availableAfter: IsoDateTime; readonly message: string | null } | null {
+  if (!isRecord(detail)) return null;
+  const after = detail["availableAfter"];
+  if (typeof after !== "string") return null;
+  const message = detail["message"];
+  return { availableAfter: after, message: typeof message === "string" ? message : null };
 }
 
 export function asDeclineCode(detail: unknown): string | null {

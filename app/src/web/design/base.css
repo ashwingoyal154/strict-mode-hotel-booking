@@ -574,3 +574,42 @@
 .label--accent {
   color: var(--accent);
 }
+
+/* ---------- print: paper carries only the document ---------- */
+
+@media print {
+  .app-header,
+  .app-demo-bar,
+  .app-footer,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: var(--surface);
+  }
+
+  .app-main {
+    max-width: none;
+    padding: 0;
+  }
+
+  .invoice {
+    max-width: none;
+    border: 0;
+    padding: 0;
+  }
+
+  .invoice__table-wrap {
+    overflow: visible;
+  }
+
+  .invoice__table td,
+  .invoice__table th {
+    white-space: normal;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}

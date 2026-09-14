@@ -1,0 +1,51 @@
+/* Verdict — Slice 2 token additions. Imported after tokens.css, which stays
+   read-only. See DESIGN.md "Slice 2 additions".
+
+   Slice 2 needed no new colours, sizes or motion: the SLA hairline, the hold line,
+   the escalation ladder and dual currency all compose from the base tokens. The
+   one genuine gap is paper.
+
+   The GST invoice must print cleanly. Printers do not print backgrounds, so a
+   traveller who has the dark theme on would otherwise print near-white ink on
+   white paper. Printing is therefore always the light palette — defined here for
+   light, prefers-color-scheme: dark and data-theme="dark" exactly as the base file
+   defines its themes, so no theme can win over paper. */
+
+@media print {
+  :root,
+  :root[data-theme="dark"] {
+    --ground: #ffffff;
+    --surface: #ffffff;
+    --sunk: #f4f4f1;
+    --ink: #000000;
+    --ink-2: #2a2e34;
+    --muted: #555a61;
+    --faint: #80858b;
+    --rule: #c9c9c0;
+    --rule-strong: #8f8f86;
+    --accent: #1c5c58;
+    --in: #2c6840;
+    --over: #8d5a07;
+    --blocked: #883026;
+    --elev-1: none;
+  }
+}
+
+@media print and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #ffffff;
+    --surface: #ffffff;
+    --sunk: #f4f4f1;
+    --ink: #000000;
+    --ink-2: #2a2e34;
+    --muted: #555a61;
+    --faint: #80858b;
+    --rule: #c9c9c0;
+    --rule-strong: #8f8f86;
+    --accent: #1c5c58;
+    --in: #2c6840;
+    --over: #8d5a07;
+    --blocked: #883026;
+    --elev-1: none;
+  }
+}

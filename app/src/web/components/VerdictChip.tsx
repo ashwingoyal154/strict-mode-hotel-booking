@@ -3,10 +3,10 @@
  * Three variants only, and the chip always carries its word: verdict is never
  * conveyed by colour alone.
  *
- * Slice 1's PolicyState is `in | blocked`, so over-cap arrives as
- * `blocked + reasonCode "over_cap"`. It still reads in the `over` colour with the
- * word "Over cap", because "you are above the cap" and "this supplier is not
- * approved" are different facts and the traveller needs to tell them apart.
+ * Slice 2 makes the third verdict real: `state === "over"` is its own state,
+ * ranked and bookable through approval. Slice 1 stored over-cap as
+ * `blocked + reasonCode "over_cap"`; those records still read as `Over cap`, because
+ * "you are above the cap" and "this supplier is not approved" are different facts.
  */
 
 import type { PolicyVerdict } from "../../core/types.ts";
@@ -21,6 +21,7 @@ const WORDS: Readonly<Record<VerdictVariant, string>> = {
 
 export function verdictVariant(verdict: PolicyVerdict): VerdictVariant {
   if (verdict.state === "in") return "in";
+  if (verdict.state === "over") return "over";
   return verdict.reasonCode === "over_cap" ? "over" : "blocked";
 }
 

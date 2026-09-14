@@ -232,6 +232,157 @@ export function telHref(phone: string): string {
   return `tel:${phone.replace(/[^+\d]/g, "")}`;
 }
 
+// ---------- Slice 2: time as a first-class value ----------
+
+function pickParts(dt: Date, opts: Intl.DateTimeFormatOptions): (t: Intl.DateTimeFormatPartTypes) => string {
+  const parts = new Intl.DateTimeFormat("en-GB", opts).formatToParts(dt);
+  return (type) => parts.find((p) => p.type === type)?.value ?? "";
+}
+
+function sameLocalDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
+  );
+}
+
+/** "4:10 pm" today, "4:10 pm Tue 15 Sep" on any other day. The traveller's local zone. */
+export function formatClock(iso: IsoDateTime, now: Date = new Date()): string {
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return iso;
+  const pick = pickParts(dt, { hour: "numeric", minute: "2-digit", hour12: true });
+  const period = pick("dayPeriod").toLowerCase().replace(/\./g, "").replace(/\s/g, "");
+  const clock = `${pick("hour")}:${pick("minute")} ${period}`;
+  if (sameLocalDay(dt, now)) return clock;
+  const day = pickParts(dt, { weekday: "short", day: "numeric", month: "short" });
+  return `${clock} ${day("weekday")} ${day("day")} ${day("month")}`;
+}
+
+/**
+ * Minute precision, because the SLA line never ticks faster than once a minute.
+ * "1h 42m left" · "12m left" · "under 1m left" · "overdue by 7m".
+ * Mirrors `formatRemaining` in core/format.ts.
+ */
+export function formatRemaining(ms: number): string {
+  if (!Number.isFinite(ms)) return "–";
+  const overdue = ms < 0;
+  const minutes = Math.floor(Math.abs(ms) / 60_000);
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  let span: string;
+  if (days > 0) span = `${days}d ${hours}h`;
+  else if (hours > 0) span = `${hours}h ${String(mins).padStart(2, "0")}m`;
+  else span = `${mins}m`;
+  if (overdue) return minutes < 1 ? "overdue by under 1m" : `overdue by ${span}`;
+  return minutes < 1 ? "under 1m left" : `${span} left`;
+}
+
+/** "2h" / "90m" / "1d" — a policy duration, not a countdown. */
+export function formatMinutesSpan(minutes: number): string {
+  if (minutes % 1440 === 0) return `${minutes / 1440}d`;
+  if (minutes >= 60 && minutes % 60 === 0) return `${minutes / 60}h`;
+  if (minutes > 60) return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, "0")}m`;
+  return `${minutes}m`;
+}
+
+const MONTHS_LONG: readonly string[] = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** "2026-09" → "Sep" (or "September" with `long`). A rate with no date is a guess. */
+export function pinMonthName(month: string, long = false): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  const m = match?.[2];
+  if (m === undefined) return month;
+  const i = Number(m) - 1;
+  return (long ? MONTHS_LONG[i] : MONTHS[i]) ?? month;
+}
+
+// ---------- Slice 2: money ----------
+
+/** `+₹2,400` / `−₹1,200` / `₹0`, from a signed Money the server sent. */
+export function formatSignedMoney(m: Money, opts?: { decimals?: boolean }): string {
+  const sign = m.minor > 0 ? "+" : m.minor < 0 ? "−" : "";
+  return `${sign}${formatMoney({ minor: Math.abs(m.minor), currency: m.currency }, opts)}`;
+}
+
+export function formatPercent(n: number): string {
+  return `${Number.isInteger(n) ? n : n.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}%`;
+}
+
+// ---------- Slice 2: tax documents ----------
+
+/** GST state codes, for place of supply by state name. */
+export const GST_STATE_NAMES: Readonly<Record<string, string>> = {
+  "01": "Jammu and Kashmir",
+  "02": "Himachal Pradesh",
+  "03": "Punjab",
+  "04": "Chandigarh",
+  "05": "Uttarakhand",
+  "06": "Haryana",
+  "07": "Delhi",
+  "08": "Rajasthan",
+  "09": "Uttar Pradesh",
+  "10": "Bihar",
+  "11": "Sikkim",
+  "12": "Arunachal Pradesh",
+  "13": "Nagaland",
+  "14": "Manipur",
+  "15": "Mizoram",
+  "16": "Tripura",
+  "17": "Meghalaya",
+  "18": "Assam",
+  "19": "West Bengal",
+  "20": "Jharkhand",
+  "21": "Odisha",
+  "22": "Chhattisgarh",
+  "23": "Madhya Pradesh",
+  "24": "Gujarat",
+  "26": "Dadra and Nagar Haveli and Daman and Diu",
+  "27": "Maharashtra",
+  "29": "Karnataka",
+  "30": "Goa",
+  "31": "Lakshadweep",
+  "32": "Kerala",
+  "33": "Tamil Nadu",
+  "34": "Puducherry",
+  "35": "Andaman and Nicobar Islands",
+  "36": "Telangana",
+  "37": "Andhra Pradesh",
+  "38": "Ladakh",
+  "97": "Other Territory",
+};
+
+/** "Maharashtra (27)". An unknown code is shown as the code, never guessed. */
+export function stateLabel(code: string | null): string {
+  if (code === null) return "–";
+  const name = GST_STATE_NAMES[code];
+  return name === undefined ? `state code ${code}` : `${name} (${code})`;
+}
+
+/**
+ * Turns a server reason into the tail of a verdict sentence:
+ * "The 5% slab carries no input tax credit" → "the 5% slab carries no input tax credit."
+ * An initialism ("GST …") keeps its capitals.
+ */
+export function sentenceTail(reason: string): string {
+  const trimmed = reason.trim();
+  if (trimmed.length === 0) return trimmed;
+  const first = trimmed.charAt(0);
+  const second = trimmed.charAt(1);
+  const lowered =
+    second !== "" && second === second.toLowerCase() && second !== second.toUpperCase()
+      ? `${first.toLowerCase()}${trimmed.slice(1)}`
+      : trimmed;
+  return /[.!?]$/.test(lowered) ? lowered : `${lowered}.`;
+}
+
+/** "pending_approval" → "pending approval". Machine voice, no underscores on screen. */
+export function stateWords(state: string): string {
+  return state.replace(/_/g, " ");
+}
+
 /** "14 Jun" — the short form used inside chips. */
 export function formatDayMonth(iso: IsoDateTime): string {
   const dt = new Date(iso);

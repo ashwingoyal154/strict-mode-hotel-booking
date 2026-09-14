@@ -120,6 +120,7 @@ describe("createFixtureRateSources", () => {
         travellerEmail: "asha@acme.test",
         authorisedTotal: soldOut.rate.allInTotal,
         cardTokenRef: "tok_test",
+        holdRef: null,
         correlationId: "corr-1",
       }),
     ).rejects.toBeInstanceOf(SupplierSoldOutError);
@@ -140,6 +141,7 @@ describe("createFixtureRateSources", () => {
         travellerEmail: "asha@acme.test",
         authorisedTotal: drifter.rate.allInTotal,
         cardTokenRef: "tok_test",
+        holdRef: null,
         correlationId: "corr-2",
       }),
     ).rejects.toBeInstanceOf(SupplierPriceDriftError);
@@ -161,6 +163,7 @@ describe("createFixtureRateSources", () => {
       travellerEmail: "asha@acme.test",
       authorisedTotal: ordinary.rate.allInTotal,
       cardTokenRef: "tok_test",
+      holdRef: null,
       correlationId: "corr-3",
     });
     expect(booking.confirmedTotal).toEqual(ordinary.rate.allInTotal);

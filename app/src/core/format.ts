@@ -114,6 +114,21 @@ export function formatDeadline(iso: IsoDateTime, timeZone: string = DEFAULT_TIME
   return `${hour12}:${minute} ${meridiem}, ${weekdayName(w)} ${w.day} ${monthName(w.month)}`;
 }
 
+/**
+ * An approval SLA countdown in machine voice: "1h 42m left", "12m left",
+ * "overdue by 7m". Minutes round up in both directions, so the line never says
+ * "0m left" while time remains and never calls a breach "overdue by 0m".
+ */
+export function formatRemaining(ms: number): string {
+  if (!Number.isFinite(ms)) throw new RangeError(`formatRemaining needs a finite number of ms`);
+  const overdue = ms < 0;
+  const minutes = Math.ceil(Math.abs(ms) / 60_000);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const span = hours > 0 ? `${hours}h ${rest}m` : `${rest}m`;
+  return overdue ? `overdue by ${span}` : `${span} left`;
+}
+
 /** A measured duration for the source meter: "840ms", "1.2s", "1m 4s". */
 export function formatDuration(ms: number): string {
   if (!Number.isFinite(ms)) throw new RangeError(`formatDuration needs a finite number of ms`);

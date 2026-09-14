@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Booking } from "../../core/types.ts";
 import { isApiError, listBookings, messageOf } from "../lib/api.ts";
-import { formatDateRange, formatMoney, nightsBetween, plural } from "../lib/fmt.ts";
+import { formatDateRange, formatMoney, nightsBetween, plural, stateWords } from "../lib/fmt.ts";
 import { Notice } from "../components/Notice.tsx";
 import { VerdictChip } from "../components/VerdictChip.tsx";
 
@@ -76,7 +76,7 @@ export function TripsScreen(): JSX.Element {
                 <Link className="trip-row" to={`/trip/${encodeURIComponent(b.id)}`}>
                   <div className="trip-row__top">
                     <span className="trip-row__code">{b.confirmationCode}</span>
-                    <span className="chip chip--state">{b.state}</span>
+                    <span className="chip chip--state">{stateWords(b.state)}</span>
                     <VerdictChip verdict={b.verdict} />
                   </div>
                   <h2 className="trip-row__name">{property.name}</h2>

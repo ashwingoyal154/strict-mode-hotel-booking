@@ -1,3 +1,4 @@
+import { createRuleIntentParser } from "../../src/intent/RuleIntentParser.ts";
 /**
  * Failure modes and the cancellation window, driven by a fully controlled
  * `RateSource` and `CardIssuer` rather than by fixture chaos — every status code
@@ -10,8 +11,9 @@ import request from "supertest";
 import { createApp, type AppDeps } from "../../src/server/index.ts";
 import { createMemoryStore } from "../../src/store/FileStore.ts";
 import { createLocalRouteSource } from "../../src/routing/LocalRouteSource.ts";
-import { FIXTURE_ANCHORS } from "../../src/supply/fixtures/anchors.ts";
+import { FIXTURE_ANCHORS, resolveAnchor } from "../../src/supply/fixtures/anchors.ts";
 import {
+  SupplierHoldUnsupportedError,
   SupplierPriceDriftError,
   SupplierSoldOutError,
   type RateSource,
@@ -36,6 +38,9 @@ const PROPERTY: Property = {
   brand: null,
   workReady: true,
   thumbnailUrl: null,
+  stateCode: "27",
+  supplierGstin: null,
+  timeZone: "Asia/Kolkata",
 };
 
 function rate(id: string): Rate {
@@ -58,6 +63,8 @@ function rate(id: string): Rate {
     channel: "fixture",
     supplierRef: "SUP-1",
     sourceId: "test-source",
+    tariffPerNight: { minor: 750_000, currency: "INR" },
+    holdable: false,
   };
 }
 
@@ -77,6 +84,11 @@ function testSource(mode: Mode, rec: Recorder): RateSource {
   return {
     id: "test-source",
     displayName: "Test Source",
+    capabilities: { holds: false, maxHoldMinutes: 0, live: false, currencies: "any" },
+    async hold() {
+      throw new SupplierHoldUnsupportedError("test source cannot hold");
+    },
+    async releaseHold() {},
     async searchAvailability() {
       return [offer];
     },
@@ -107,6 +119,7 @@ function testSource(mode: Mode, rec: Recorder): RateSource {
 function testIssuer(rec: Recorder, declineCode?: string): CardIssuer {
   return {
     id: "test-issuer",
+    capabilities: { live: false, currencies: "any" },
     async issue(req) {
       rec.issues += 1;
       if (declineCode !== undefined) throw new CardDeclinedError(declineCode);
@@ -118,6 +131,9 @@ function testIssuer(rec: Recorder, declineCode?: string): CardIssuer {
         expYear: 2027,
         authorisedTotal: req.exactTotal,
         incidentalsBufferMinor: req.incidentalsBufferMinor,
+        issuerId: "test-issuer",
+        validFrom: req.validFrom,
+        validUntil: req.validUntil,
       };
       return card;
     },
@@ -142,6 +158,12 @@ function harness(opts?: { mode?: Mode; declineCode?: string; now?: Date }): Harn
     routes: createLocalRouteSource(),
     issuer: testIssuer(rec, opts?.declineCode),
     now: () => now,
+    notifiers: [],
+    intentParser: createRuleIntentParser(),
+    resolveAnchor,
+    knownAnchors: FIXTURE_ANCHORS,
+    publicBaseUrl: "http://localhost:8787",
+    demo: false,
   };
   return {
     app: createApp(deps),

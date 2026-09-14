@@ -1,35 +1,36 @@
 /**
  * The immutable supplier log (spec §3.3, A18).
  *
- * Every call across the supply and payments seams is wrapped here rather than
- * logged by hand at each call site, so it is impossible to add a new supplier
- * call that goes unrecorded. Request, response, duration and error all land in
- * one append-only `SourceLogEntry`.
+ * Every call across the supply, payments and notification seams is wrapped here
+ * rather than logged by hand at each call site, so it is impossible to add a new
+ * outbound call that goes unrecorded.
  *
- * Nothing is redacted, because there is nothing to redact: `CardIssuer` cannot
- * return a PAN and `SupplierBookRequest` carries a `cardTokenRef` only (A13 is
- * a property of the types, not of this file's discipline).
+ * Nothing card-like is logged because nothing card-like exists: `CardIssuer`
+ * cannot return a PAN (A13 is a property of the types). Personal data is kept to
+ * what a dispute needs — traveller emails and names are not copied into the log,
+ * because the log is append-only and erasure cannot reach back into it.
  */
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
 import { newId } from "../core/ids.ts";
 import type { SourceLogEntry } from "../core/types.ts";
+import type { Notifier } from "../notify/Notifier.ts";
 import type { CardIssuer } from "../payments/CardIssuer.ts";
-import type { RateSource } from "../supply/RateSource.ts";
+import type { RateSource, RateSourceCapabilities } from "../supply/RateSource.ts";
 import type { Store } from "../store/Store.ts";
 
 const correlation = new AsyncLocalStorage<string>();
 
 /**
- * Groups every supplier and card call made inside `fn` under one correlation id,
- * so a booking attempt reads as a single story in the log.
+ * Groups every supplier and card call made inside `fn` under one correlation id.
+ * Booking flows use the booking id, so a traveller's data export can collect the
+ * log entries that belong to their bookings.
  */
 export function withCorrelationId<T>(id: string, fn: () => T): T {
   return correlation.run(id, fn);
 }
 
-/** The correlation id in force, if any. */
 export function currentCorrelationId(): string | undefined {
   return correlation.getStore();
 }
@@ -90,6 +91,13 @@ function messageOf(err: unknown): string {
   return String(err);
 }
 
+const NO_CAPABILITIES: RateSourceCapabilities = {
+  holds: false,
+  maxHoldMinutes: 0,
+  live: false,
+  currencies: "any",
+};
+
 export function instrumentRateSource(
   src: RateSource,
   store: Store,
@@ -100,6 +108,7 @@ export function instrumentRateSource(
   return {
     id: src.id,
     displayName: src.displayName,
+    capabilities: src.capabilities ?? NO_CAPABILITIES,
 
     searchAvailability(query, signal) {
       return record(
@@ -117,10 +126,7 @@ export function instrumentRateSource(
           },
         },
         () => src.searchAvailability(query, signal),
-        (offers) => ({
-          offerCount: offers.length,
-          offerIds: offers.map((o) => o.rate.id),
-        }),
+        (offers) => ({ offerCount: offers.length, offerIds: offers.map((o) => o.rate.id) }),
       );
     },
 
@@ -135,9 +141,30 @@ export function instrumentRateSource(
         },
         () => src.priceCheck(offerId, query),
         (offer) =>
-          offer === null
-            ? { available: false }
-            : { available: true, allInTotal: offer.rate.allInTotal },
+          offer === null ? { available: false } : { available: true, allInTotal: offer.rate.allInTotal },
+      );
+    },
+
+    hold(req) {
+      return record(
+        store,
+        {
+          sourceId: src.id,
+          operation: "hold",
+          correlationId: req.correlationId,
+          request: { offerId: req.offerId, expectedTotal: req.expectedTotal, minutes: req.minutes },
+        },
+        () => src.hold(req),
+        (h) => h,
+      );
+    },
+
+    releaseHold(holdRef) {
+      return record(
+        store,
+        { sourceId: src.id, operation: "releaseHold", correlationId: corr(), request: { holdRef } },
+        () => src.releaseHold(holdRef),
+        () => ({ released: true }),
       );
     },
 
@@ -152,7 +179,7 @@ export function instrumentRateSource(
             offerId: req.offerId,
             authorisedTotal: req.authorisedTotal,
             cardTokenRef: req.cardTokenRef,
-            travellerEmail: req.travellerEmail,
+            holdRef: req.holdRef,
           },
         },
         () => src.book(req),
@@ -163,12 +190,7 @@ export function instrumentRateSource(
     cancel(supplierBookingRef) {
       return record(
         store,
-        {
-          sourceId: src.id,
-          operation: "cancel",
-          correlationId: corr(),
-          request: { supplierBookingRef },
-        },
+        { sourceId: src.id, operation: "cancel", correlationId: corr(), request: { supplierBookingRef } },
         () => src.cancel(supplierBookingRef),
         () => ({ cancelled: true }),
       );
@@ -179,6 +201,7 @@ export function instrumentRateSource(
 export function instrumentCardIssuer(issuer: CardIssuer, store: Store): CardIssuer {
   return {
     id: issuer.id,
+    capabilities: issuer.capabilities ?? { live: false, currencies: "any" },
 
     issue(req) {
       return record(
@@ -192,6 +215,9 @@ export function instrumentCardIssuer(issuer: CardIssuer, store: Store): CardIssu
             incidentalsBufferMinor: req.incidentalsBufferMinor,
             entityId: req.entityId,
             reference: req.reference,
+            validFrom: req.validFrom,
+            validUntil: req.validUntil,
+            merchantCategory: req.merchantCategory,
           },
         },
         () => issuer.issue(req),
@@ -215,6 +241,27 @@ export function instrumentCardIssuer(issuer: CardIssuer, store: Store): CardIssu
         },
         () => issuer.void(tokenRef),
         () => ({ voided: true }),
+      );
+    },
+  };
+}
+
+export function instrumentNotifier(notifier: Notifier, store: Store): Notifier {
+  return {
+    id: notifier.id,
+    channel: notifier.channel,
+    live: notifier.live,
+    send(n) {
+      return record(
+        store,
+        {
+          sourceId: notifier.id,
+          operation: "notify",
+          correlationId: currentCorrelationId() ?? newId("corr"),
+          request: { kind: n.kind, channel: notifier.channel, recipientId: n.recipient.id },
+        },
+        () => notifier.send(n),
+        () => ({ delivered: true }),
       );
     },
   };

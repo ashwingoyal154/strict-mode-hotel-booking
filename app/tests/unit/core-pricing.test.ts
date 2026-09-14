@@ -27,6 +27,8 @@ function rateWith(components: readonly RateComponent[], allInMinor: number, nigh
     channel: "fixture",
     supplierRef: "sup-1",
     sourceId: "src_a",
+    tariffPerNight: money(Math.floor(allInMinor / nights), "INR"),
+    holdable: false,
   };
 }
 

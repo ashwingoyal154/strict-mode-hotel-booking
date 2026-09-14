@@ -80,6 +80,45 @@ export function compareMoney(a: Money, b: Money): number {
   return 0;
 }
 
+/** Magnitude of an amount, same currency — "₹1,200 less" needs the size without the sign. */
+export function absMoney(m: Money): Money {
+  return money(Math.abs(m.minor), m.currency);
+}
+
+/** True for exactly zero minor units; a currency is still required, so zero is never untyped. */
+export function isZeroMoney(m: Money): boolean {
+  return m.minor === 0;
+}
+
+/**
+ * ISO 4217 minor-unit exponents that differ from, or matter as much as, the
+ * default of 2. `core/fx.ts` re-exports this as CURRENCY_EXPONENT; it lives here
+ * because formatting must agree with conversion, and fx.ts already depends on
+ * this module — defining it once in fx.ts would make the two import each other.
+ */
+export const MINOR_UNIT_EXPONENTS: Readonly<Record<string, number>> = {
+  INR: 2,
+  USD: 2,
+  EUR: 2,
+  GBP: 2,
+  AED: 2,
+  SGD: 2,
+  JPY: 0,
+  KRW: 0,
+  VND: 0,
+  CLP: 0,
+  ISK: 0,
+  BHD: 3,
+  KWD: 3,
+  OMR: 3,
+  JOD: 3,
+  TND: 3,
+};
+
+function minorUnitExponent(currency: string): number {
+  return MINOR_UNIT_EXPONENTS[currency.toUpperCase()] ?? 2;
+}
+
 const SYMBOLS: Readonly<Record<string, string>> = {
   INR: "₹",
   USD: "$",
@@ -130,12 +169,17 @@ export function formatMoney(m: Money, opts?: { decimals?: boolean }): string {
 
   const negative = m.minor < 0;
   const abs = Math.abs(m.minor);
-  const majorDigits = String(Math.trunc(abs / 100));
-  const fraction = abs % 100;
+  // Slice 2 goes abroad: ¥1,240 has no sen and BHD has fils in thousandths, so the
+  // split point comes from the currency. (abs − fraction) ÷ divisor is an exact
+  // integer division, where abs ÷ divisor would pass through a float.
+  const exponent = minorUnitExponent(code);
+  const divisor = 10 ** exponent;
+  const fraction = abs % divisor;
+  const majorDigits = String((abs - fraction) / divisor);
 
   const grouped = code === "INR" ? groupIndian(majorDigits) : groupWestern(majorDigits);
-  const showFraction = opts?.decimals === true || fraction !== 0;
-  const body = showFraction ? `${grouped}.${String(fraction).padStart(2, "0")}` : grouped;
+  const showFraction = exponent > 0 && (opts?.decimals === true || fraction !== 0);
+  const body = showFraction ? `${grouped}.${String(fraction).padStart(exponent, "0")}` : grouped;
 
   return `${negative ? "-" : ""}${symbol}${separator}${body}`;
 }

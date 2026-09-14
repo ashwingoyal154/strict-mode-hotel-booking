@@ -5,9 +5,9 @@
  *
  * Two mechanisms, deliberately separate:
  *  - Marker suffixes: offer ids ending with DRIFT_MARKER_SUFFIX /
- *    SOLD_OUT_MARKER_SUFFIX ALWAYS drift / are always sold out, unconditionally
- *    of ChaosConfig.enabled. This is the addressable, deterministic canary a
- *    test can rely on without wiring any config at all.
+ *    SOLD_OUT_MARKER_SUFFIX / LATE_DRIFT_MARKER_SUFFIX ALWAYS misbehave,
+ *    unconditionally of ChaosConfig.enabled. This is the addressable,
+ *    deterministic canary a test can rely on without wiring any config at all.
  *  - ChaosConfig: additional, opt-in-by-id chaos for tests that want to force
  *    an arbitrary source to time out or an arbitrary offer to drift/sell out,
  *    gated by `enabled` so a test can flip it off entirely.
@@ -28,6 +28,14 @@ export interface ChaosConfig {
 export const DRIFT_MARKER_SUFFIX = "~DRIFT";
 /** Offer ids ending with this suffix are always sold out at priceCheck/book. */
 export const SOLD_OUT_MARKER_SUFFIX = "~SOLDOUT";
+/**
+ * Offer ids ending with this suffix re-price stably at priceCheck, but drift at
+ * `book` when booked without a hold. It is how "approved, but the rate moved
+ * while the approver thought about it" is tested without any server state.
+ * Note "~LATEDRIFT" does not end with "~DRIFT" (the character before DRIFT is
+ * "E", not "~"), so the two canaries never overlap.
+ */
+export const LATE_DRIFT_MARKER_SUFFIX = "~LATEDRIFT";
 
 /** Chaos is on by default (only the marker canaries + any explicit ids bite). */
 export function defaultChaos(): ChaosConfig {

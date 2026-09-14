@@ -44,12 +44,13 @@ describe("A2 — commute-time ranking", () => {
     const h = await makeHarness();
     await h.login();
     const s = await h.search();
-    const first = s.inPolicy[0];
-    expect(first).toBeDefined();
-    if (!first) return;
-    expect(first.rank).toBe(1);
-    expect(first.rankReason).toBe("closest to your meeting");
-    s.inPolicy.forEach((r, i) => expect(r.rank).toBe(i + 1));
+    const numbered = s.results.filter((r) => r.verdict.state !== "blocked");
+    const top = numbered[0];
+    expect(top?.rank).toBe(1);
+    expect(top?.rankReason).toBe("closest to your meeting");
+    // Slice 2: in-policy and over-cap offers share one commute-ordered numbering.
+    numbered.forEach((r, i) => expect(r.rank).toBe(i + 1));
+    s.blocked.forEach((r) => expect(r.rank).toBe(0));
   }, 60000);
 
   it("gives every result a commute with a mode and a non-zero duration", async () => {

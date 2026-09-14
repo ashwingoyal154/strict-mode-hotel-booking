@@ -13,6 +13,10 @@ function baseRequest(overrides: Partial<IssueCardRequest> = {}): IssueCardReques
     entityId: "acme",
     reference: "bkg_test_1",
     correlationId: "corr-1",
+    travellerName: "Asha Rao",
+    validFrom: "2026-10-11",
+    validUntil: "2026-10-17",
+    merchantCategory: "lodging",
     ...overrides,
   };
 }

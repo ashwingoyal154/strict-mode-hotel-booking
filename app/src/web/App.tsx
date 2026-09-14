@@ -3,16 +3,24 @@
  *
  * There is no account wall: this only establishes who is asking, because policy and
  * cost centre are per-traveller and a result with no verdict would be a lie.
+ *
+ * The one exception to "signed in first" is `/a/:token` — the one-tap decision page
+ * reached from a notification. The contract authorises that decision by the token
+ * itself, so an approver opening it on a phone with no session still gets the card.
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link, Navigate, Route, Routes, useLocation, useMatch } from "react-router-dom";
 import type { Traveller } from "../core/types.ts";
 import { isApiError, logout, me, messageOf } from "./lib/api.ts";
 import { AppHeader } from "./components/AppHeader.tsx";
 import { Notice } from "./components/Notice.tsx";
+import { ActionTokenScreen } from "./screens/ActionTokenScreen.tsx";
 import { AdminScreen } from "./screens/AdminScreen.tsx";
+import { ApprovalsScreen } from "./screens/ApprovalsScreen.tsx";
 import { ConfirmScreen } from "./screens/ConfirmScreen.tsx";
+import { InvoiceScreen } from "./screens/InvoiceScreen.tsx";
+import { ModifyScreen } from "./screens/ModifyScreen.tsx";
 import { ResultsScreen } from "./screens/ResultsScreen.tsx";
 import { SearchScreen } from "./screens/SearchScreen.tsx";
 import { SignInScreen } from "./screens/SignInScreen.tsx";
@@ -22,16 +30,28 @@ import { TripsScreen } from "./screens/TripsScreen.tsx";
 type Session =
   | { readonly k: "loading" }
   | { readonly k: "anonymous" }
-  | { readonly k: "signed-in"; readonly traveller: Traveller }
+  | {
+      readonly k: "signed-in";
+      readonly traveller: Traveller;
+      readonly approvalsPending: number;
+    }
   | { readonly k: "unreachable"; readonly code: string; readonly message: string };
 
 export function App(): JSX.Element {
   const [session, setSession] = useState<Session>({ k: "loading" });
+  const location = useLocation();
+  const tokenMatch = useMatch("/a/:token");
 
   const load = useCallback((): void => {
     setSession({ k: "loading" });
     void me()
-      .then((res) => setSession({ k: "signed-in", traveller: res.traveller }))
+      .then((res) =>
+        setSession({
+          k: "signed-in",
+          traveller: res.traveller,
+          approvalsPending: res.approvalsPending ?? 0,
+        }),
+      )
       .catch((err: unknown) => {
         if (isApiError(err) && err.status === 401) {
           setSession({ k: "anonymous" });
@@ -47,6 +67,27 @@ export function App(): JSX.Element {
 
   useEffect(load, [load]);
 
+  // The approvals badge is a count that others change (a new request, a decision),
+  // so it is re-read quietly on each navigation — never by flipping to loading.
+  const firstPath = useRef(true);
+  const signedIn = session.k === "signed-in";
+  useEffect(() => {
+    if (firstPath.current) {
+      firstPath.current = false;
+      return;
+    }
+    if (!signedIn) return;
+    void me()
+      .then((res) =>
+        setSession((s) =>
+          s.k === "signed-in" && s.approvalsPending !== (res.approvalsPending ?? 0)
+            ? { ...s, approvalsPending: res.approvalsPending ?? 0 }
+            : s,
+        ),
+      )
+      .catch(() => undefined);
+  }, [location.pathname, signedIn]);
+
   const signOut = useCallback((): void => {
     void logout()
       .catch(() => undefined)
@@ -57,7 +98,10 @@ export function App(): JSX.Element {
 
   return (
     <div className="app">
-      <AppHeader traveller={traveller} />
+      <AppHeader
+        traveller={traveller}
+        approvalsPending={session.k === "signed-in" ? session.approvalsPending : 0}
+      />
 
       <main className="app-main">
         {session.k === "loading" ? (
@@ -78,8 +122,10 @@ export function App(): JSX.Element {
           </div>
         ) : null}
 
-        {session.k === "anonymous" ? (
-          <SignInScreen onSignedIn={(t) => setSession({ k: "signed-in", traveller: t })} />
+        {session.k === "anonymous" && tokenMatch !== null ? <ActionTokenScreen /> : null}
+
+        {session.k === "anonymous" && tokenMatch === null ? (
+          <SignInScreen onSignedIn={load} />
         ) : null}
 
         {session.k === "signed-in" ? (
@@ -91,7 +137,12 @@ export function App(): JSX.Element {
               element={<ConfirmScreen traveller={session.traveller} />}
             />
             <Route path="/trip/:bookingId" element={<TripScreen />} />
+            <Route path="/trip/:bookingId/invoice" element={<InvoiceScreen />} />
+            <Route path="/trip/:bookingId/modify" element={<ModifyScreen />} />
+            <Route path="/trip/:bookingId/modify/:searchId/:offerId" element={<ModifyScreen />} />
             <Route path="/trips" element={<TripsScreen />} />
+            <Route path="/approvals" element={<ApprovalsScreen />} />
+            <Route path="/a/:token" element={<ActionTokenScreen />} />
             <Route path="/admin" element={<AdminScreen />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

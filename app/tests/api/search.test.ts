@@ -1,3 +1,4 @@
+import { createRuleIntentParser } from "../../src/intent/RuleIntentParser.ts";
 /**
  * Streaming search: the fan-out, the SSE event sequence and graceful degradation
  * when a source times out (A24).
@@ -10,7 +11,7 @@ import { createMemoryStore } from "../../src/store/FileStore.ts";
 import { createFixtureRateSources } from "../../src/supply/FixtureRateSource.ts";
 import { createLocalRouteSource } from "../../src/routing/LocalRouteSource.ts";
 import { createSandboxCardIssuer } from "../../src/payments/SandboxCardIssuer.ts";
-import { FIXTURE_ANCHORS } from "../../src/supply/fixtures/anchors.ts";
+import { FIXTURE_ANCHORS, resolveAnchor } from "../../src/supply/fixtures/anchors.ts";
 import type { RateSource } from "../../src/supply/RateSource.ts";
 
 const FIXED_NOW = new Date("2026-06-01T09:00:00.000Z");
@@ -24,6 +25,12 @@ function deps(sources?: RateSource[]): AppDeps {
     routes: createLocalRouteSource(),
     issuer: createSandboxCardIssuer(),
     now: () => FIXED_NOW,
+    notifiers: [],
+    intentParser: createRuleIntentParser(),
+    resolveAnchor,
+    knownAnchors: FIXTURE_ANCHORS,
+    publicBaseUrl: "http://localhost:8787",
+    demo: false,
   };
 }
 
@@ -143,6 +150,9 @@ describe("GET /api/search/:id/events", () => {
     const hung: RateSource = {
       id: "hung",
       displayName: "Hung Source",
+      capabilities: { holds: false, maxHoldMinutes: 0, live: false, currencies: "any" },
+      hold: () => Promise.reject(new Error("never")),
+      releaseHold: async () => undefined,
       searchAvailability: (_q, signal) =>
         new Promise((_resolve, reject) => {
           signal.addEventListener("abort", () => reject(new Error("aborted")));

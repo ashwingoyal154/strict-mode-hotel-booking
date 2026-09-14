@@ -680,3 +680,477 @@ a.offer:hover {
     animation: none;
   }
 }
+
+/* =======================================================================
+   Slice 2 — dual currency
+   The supplier total leads; the converted figure sits beside it, muted and
+   never as large.
+   ======================================================================= */
+
+.fx {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.offer__total-line,
+.total__amount-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--s2);
+  row-gap: 0;
+  min-width: 0;
+}
+
+/* The over variant's words sit on the chip's own line, so the reserved two-line
+   reason keeps every card's height. */
+.offer__verdict-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.offer__ask {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  line-height: var(--lh-snug);
+  color: var(--over);
+}
+
+/* =======================================================================
+   Square chips — justification reasons, clarifying answers
+   ======================================================================= */
+
+.sq-chips {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.sq-chip {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  line-height: var(--lh-snug);
+  color: var(--ink-2);
+  background: var(--surface);
+  border: var(--hair) solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  padding: var(--s2) var(--s3);
+  text-align: left;
+  transition: border-color var(--dur-fast) var(--ease-settle),
+    background var(--dur-fast) var(--ease-settle);
+}
+
+.sq-chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.sq-chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.sq-chip[aria-pressed="true"]::before {
+  content: "\2713";
+  margin-right: var(--s2);
+  color: var(--accent);
+}
+
+.sq-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =======================================================================
+   JustificationForm
+   ======================================================================= */
+
+.justify {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: var(--s4);
+}
+
+.justify__legend {
+  padding: 0;
+  margin-bottom: var(--s3);
+}
+
+/* A human writes this, so it is set in the product voice. */
+.justify__text {
+  font-family: var(--font-body);
+  font-size: var(--t-base);
+  letter-spacing: 0;
+  line-height: var(--lh-snug);
+  resize: vertical;
+}
+
+.justify__hint {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.justify__hint[data-ready="true"] {
+  color: var(--ink-2);
+}
+
+.justify__message {
+  color: var(--ink);
+}
+
+/* =======================================================================
+   ApprovalPreview + over-cap arithmetic
+   ======================================================================= */
+
+.preview,
+.arith {
+  display: grid;
+  gap: var(--s3);
+}
+
+.preview__rows {
+  display: grid;
+  border-top: var(--hair) solid var(--rule);
+}
+
+.decided__value--over,
+.arith__over {
+  color: var(--over);
+}
+
+/* =======================================================================
+   SlaLine — one hairline that empties. Shared with the approver card, which
+   marks tone with sla--soon / sla--breached rather than data-tone.
+   ======================================================================= */
+
+.sla {
+  display: grid;
+  gap: var(--s2);
+}
+
+.sla__line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--s2);
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+.sla__who {
+  font-weight: 500;
+}
+
+.sla__sep {
+  color: var(--faint);
+}
+
+.sla__track {
+  display: block;
+  height: calc(var(--hair) * 2);
+  background: var(--rule);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.sla__fill {
+  display: block;
+  height: 100%;
+  background: var(--ink-2);
+  transform-origin: left center;
+  transition: transform var(--dur-settle) var(--ease-settle),
+    background var(--dur-settle) var(--ease-settle);
+}
+
+.sla[data-tone="over"] .sla__fill,
+.sla--soon .sla__fill {
+  background: var(--over);
+}
+
+.sla[data-tone="over"] .sla__left,
+.sla--soon .sla__line {
+  color: var(--over);
+}
+
+.sla[data-tone="blocked"] .sla__fill,
+.sla--breached .sla__fill {
+  background: var(--blocked);
+}
+
+.sla[data-tone="blocked"] .sla__line,
+.sla--breached .sla__line {
+  color: var(--blocked);
+}
+
+/* =======================================================================
+   EscalationLadder — the audit trail made visible
+   ======================================================================= */
+
+.esc-ladder {
+  display: grid;
+  gap: var(--s2);
+}
+
+.esc-ladder__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  border-left: var(--hair) solid var(--rule-strong);
+}
+
+.esc-ladder__step {
+  display: grid;
+  grid-template-columns: 3ch 1fr;
+  column-gap: var(--s3);
+  padding: var(--s2) 0 var(--s2) var(--s4);
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  color: var(--muted);
+}
+
+.esc-ladder__level {
+  font-size: var(--t-micro);
+  letter-spacing: var(--ls-caps);
+  color: var(--faint);
+}
+
+.esc-ladder__note {
+  grid-column: 2;
+}
+
+.esc-ladder__step[data-status="current"],
+.esc-ladder__step[data-status="decider"] {
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--ink);
+}
+
+.esc-ladder__step[data-status="current"] .esc-ladder__name,
+.esc-ladder__step[data-status="decider"] .esc-ladder__name {
+  font-weight: 500;
+}
+
+.esc-ladder__step[data-status="current"] .esc-ladder__level,
+.esc-ladder__step[data-status="decider"] .esc-ladder__level {
+  color: var(--ink-2);
+}
+
+/* Future levels are the faint ones. Their words stay at body contrast; only the
+   level index drops to --faint, so "faint" never costs legibility. */
+.esc-ladder__step[data-status="future"] .esc-ladder__name {
+  font-weight: 400;
+}
+
+/* =======================================================================
+   HoldLine — exactly one of two honest forms
+   ======================================================================= */
+
+.hold {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  border: var(--hair) solid var(--rule);
+  border-top: 0;
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  background: var(--surface);
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  color: var(--ink-2);
+}
+
+.hold[data-held="false"] {
+  color: var(--over);
+  background: var(--over-soft);
+}
+
+/* =======================================================================
+   ChatEntry — a field, not a conversation
+   ======================================================================= */
+
+.chat {
+  display: grid;
+  gap: var(--s3);
+  border-top: var(--hair) solid var(--rule);
+  padding-top: var(--s5);
+}
+
+.chat__form {
+  display: grid;
+  gap: var(--s2);
+}
+
+.chat__row {
+  display: flex;
+  gap: var(--s2);
+  align-items: stretch;
+}
+
+.chat__input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chat__answer {
+  display: grid;
+  gap: var(--s3);
+}
+
+.chat__answer:empty {
+  display: none;
+}
+
+.chat__readback {
+  margin: 0;
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+.chat__clarify,
+.chat__go {
+  display: grid;
+  gap: var(--s2);
+  justify-items: start;
+}
+
+.chat__fault {
+  margin: 0;
+}
+
+/* =======================================================================
+   Outcomes, quotes, the desk, the nav badge, demo personas
+   ======================================================================= */
+
+.outcome__sentence {
+  margin: 0;
+  font-family: var(--font-machine);
+  font-size: var(--t-small);
+  letter-spacing: var(--ls-mono);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+/* A human wrote it: serif, quoted, with a hairline. */
+.quote {
+  margin: 0;
+  padding: var(--s1) 0 var(--s1) var(--s4);
+  border-left: 2px solid var(--rule-strong);
+  display: grid;
+  gap: var(--s1);
+}
+
+.quote p {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--t-base);
+  line-height: var(--lh-body);
+  color: var(--ink);
+}
+
+.desk {
+  display: grid;
+  gap: var(--s3);
+  justify-items: start;
+}
+
+.desk .field,
+.desk textarea {
+  width: 100%;
+}
+
+.app-nav__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--s4) + var(--s1));
+  margin-left: var(--s1);
+  padding: 0 var(--s1);
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-machine);
+  font-size: var(--t-micro);
+  line-height: var(--lh-snug);
+  font-variant-numeric: tabular-nums;
+}
+
+.personas {
+  display: grid;
+  gap: var(--s2);
+}
+
+.persona {
+  display: grid;
+  gap: var(--s1);
+  text-align: left;
+  padding: var(--s3);
+  background: var(--surface);
+  border: var(--hair) solid var(--rule-strong);
+  border-radius: var(--r-sm);
+  transition: border-color var(--dur-fast) var(--ease-settle);
+}
+
+.persona:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.persona:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.persona__name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-small);
+  letter-spacing: var(--ls-display);
+  color: var(--ink);
+}
+
+.persona__role {
+  font-family: var(--font-machine);
+  font-size: var(--t-mono);
+  letter-spacing: var(--ls-mono);
+  line-height: var(--lh-snug);
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sla__fill,
+  .sq-chip,
+  .persona {
+    transition: none;
+  }
+}

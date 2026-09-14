@@ -18,12 +18,18 @@
  * The verdict reason is rendered verbatim from `verdict.reason` — it is authored
  * server-side as the arithmetic, and it lives inside the verdict field because
  * "why" belongs to the verdict, not beside it.
+ *
+ * Slice 2, inside existing fields only:
+ *  · total    — the supplier-currency total leads at full size; abroad, the
+ *               reporting-currency equivalent sits beside it in muted mono.
+ *  · verdict  — the over variant says in words that tapping leads to a request.
  */
 
 import { Link } from "react-router-dom";
 import type { RankedOffer } from "../../core/types.ts";
 import { describeCommute, formatDayMonth, formatMoney, perNightLine } from "../lib/fmt.ts";
-import { VerdictChip } from "./VerdictChip.tsx";
+import { FxEquivalent } from "./FxEquivalent.tsx";
+import { VerdictChip, verdictVariant } from "./VerdictChip.tsx";
 
 interface OfferCardProps {
   readonly ranked: RankedOffer;
@@ -34,8 +40,9 @@ interface OfferCardProps {
 }
 
 export function OfferCard({ ranked, href, settling = false }: OfferCardProps): JSX.Element {
-  const { offer, commute, verdict, rank, rankReason } = ranked;
+  const { offer, commute, verdict, rank, rankReason, display } = ranked;
   const { property, rate } = offer;
+  const needsApproval = verdictVariant(verdict) === "over" && href !== undefined;
 
   const className = `offer${settling ? " offer--settling" : ""}`;
 
@@ -76,8 +83,9 @@ export function OfferCard({ ranked, href, settling = false }: OfferCardProps): J
       </div>
 
       <div className="offer__money">
-        <span data-field="total" className="offer__total">
-          {formatMoney(rate.allInTotal)}
+        <span data-field="total" className="offer__total-line">
+          <span className="offer__total">{formatMoney(rate.allInTotal)}</span>
+          <FxEquivalent conversion={display} className="offer__fx" />
         </span>
         <span data-field="per-night" className="offer__pn">
           {perNightLine(rate)}
@@ -85,7 +93,10 @@ export function OfferCard({ ranked, href, settling = false }: OfferCardProps): J
       </div>
 
       <div data-field="verdict" className="offer__verdict">
-        <VerdictChip verdict={verdict} />
+        <span className="offer__verdict-line">
+          <VerdictChip verdict={verdict} />
+          {needsApproval ? <span className="offer__ask">needs approval to book</span> : null}
+        </span>
         <span className="offer__reason">{verdict.reason}</span>
       </div>
 

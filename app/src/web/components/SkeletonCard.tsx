@@ -10,6 +10,10 @@
  * hidden from assistive technology because the SourceMeter announces progress.
  */
 
+const CHIP_FILL_VERDICT = " ".repeat(9);
+const CHIP_FILL_SHORT = " ".repeat(10);
+const CHIP_FILL_LONG = " ".repeat(14);
+
 export function SkeletonCard(): JSX.Element {
   return (
     <div data-testid="skeleton-card" className="offer offer--skeleton" aria-hidden="true">
@@ -33,8 +37,10 @@ export function SkeletonCard(): JSX.Element {
       </div>
 
       <div className="offer__money">
-        <span className="offer__total">
-          <span className="sk-bar sk-bar--total" />
+        <span className="offer__total-line">
+          <span className="offer__total">
+            <span className="sk-bar sk-bar--total" />
+          </span>
         </span>
         <span className="offer__pn">
           <span className="sk-bar sk-bar--pn" />
@@ -42,15 +48,17 @@ export function SkeletonCard(): JSX.Element {
       </div>
 
       <div className="offer__verdict">
-        <span className="verdict verdict--skeleton">{" ".repeat(9)}</span>
+        <span className="offer__verdict-line">
+          <span className="verdict verdict--skeleton">{CHIP_FILL_VERDICT}</span>
+        </span>
         <span className="offer__reason">
           <span className="sk-bar sk-bar--reason" />
         </span>
       </div>
 
       <div className="offer__chips">
-        <span className="chip chip--skeleton">{" ".repeat(10)}</span>
-        <span className="chip chip--skeleton">{" ".repeat(14)}</span>
+        <span className="chip chip--skeleton">{CHIP_FILL_SHORT}</span>
+        <span className="chip chip--skeleton">{CHIP_FILL_LONG}</span>
       </div>
     </div>
   );

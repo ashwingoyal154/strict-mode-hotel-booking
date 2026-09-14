@@ -16,7 +16,9 @@ describe("A3 — price parity to the cent", () => {
 
     let checked = 0;
     let searches = 0;
-    while (checked < 100 && searches < 12) {
+    // Slice 2 dedupes to one row per hotel and ranks over-cap rates separately, so
+    // each search yields fewer in-policy offers; allow enough searches to reach 100.
+    while (checked < 100 && searches < 30) {
       searches++;
       const s = await h.search(undefined, 2 + (searches % 5));
       expect(s.inPolicy.length).toBeGreaterThan(0);

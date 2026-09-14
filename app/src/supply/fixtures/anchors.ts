@@ -2,6 +2,9 @@
  * Fixture business-district anchors. Real coordinates so commute math (core
  * commute.ts) has something true to say — this is the seam SPEC.md §3.1 exists
  * to protect: nothing above RateSource/RouteSource may know these are fixtures.
+ *
+ * Slice 2 adds three international districts so the multi-currency, pinned-FX
+ * and advisory paths have real places to exercise them.
  */
 import type { Anchor } from "../../core/types.ts";
 
@@ -42,6 +45,24 @@ export const FIXTURE_ANCHORS: readonly Anchor[] = [
     city: "Pune",
     countryCode: "IN",
   },
+  {
+    label: "Marina Bay Financial Centre, Singapore",
+    geo: { lat: 1.2789, lng: 103.8536 },
+    city: "Singapore",
+    countryCode: "SG",
+  },
+  {
+    label: "DIFC, Dubai",
+    geo: { lat: 25.2131, lng: 55.2796 },
+    city: "Dubai",
+    countryCode: "AE",
+  },
+  {
+    label: "Canary Wharf, London",
+    geo: { lat: 51.5054, lng: -0.0235 },
+    city: "London",
+    countryCode: "GB",
+  },
 ] as const;
 
 /** Extra ways a traveller might type each anchor, beyond its own label/city. */
@@ -52,6 +73,9 @@ const ALIASES: readonly (readonly string[])[] = [
   ["cyber city", "cybercity", "cyber hub", "gurgaon", "cyber city gurgaon"],
   ["hitec city", "hitech city", "hitec", "hi tec city", "cyberabad"],
   ["hinjewadi", "hinjewadi phase 1", "hinjewadi pune"],
+  ["mbfc", "marina bay", "marina bay financial centre", "marina bay financial center", "raffles place"],
+  ["difc", "dubai international financial centre", "dubai international financial center", "gate village"],
+  ["canary wharf", "canary wharf london", "e14", "docklands"],
 ];
 
 function normalize(s: string): string {

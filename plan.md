@@ -75,6 +75,13 @@ Spec criteria **A1, A2, A3, A4, A6, A7, A13, A14, A24, A25**, plus **A9** reduce
 
 ## Slice 2 — The Real World
 
+> **Build status (14 Sep 2026): built and deployed as a demo on fixture supply.**
+> 582 of 583 tests pass (1 gated). A5, A8 (50/50), A9–A12, A20 and gate **S1** pass.
+> **S2 and S3 are not claimable** without Expedia Partner Solutions credentials and a
+> card-issuing program. The Rapid and Stripe adapters exist behind their ports and
+> carry `UNVERIFIED` marks for sandbox confirmation. See `app/README.md`.
+
+
 > **Promise:** The trips that don't fit — over cap, abroad, plans changed — stay inside the platform. And the money is real.
 
 **Who uses it:** the same company, now routing **all** hotel travel here. This is the first slice that takes real money against live inventory, which makes it the first slice with a genuine go-live.

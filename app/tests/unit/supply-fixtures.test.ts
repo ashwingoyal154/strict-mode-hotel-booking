@@ -1,3 +1,4 @@
+import { gstForStay } from "../../src/core/gst.ts";
 import { FIXTURE_ANCHORS, resolveAnchor } from "../../src/supply/fixtures/anchors.ts";
 import { FIXTURE_PROPERTIES, propertiesNear } from "../../src/supply/fixtures/properties.ts";
 import { ratesFor } from "../../src/supply/fixtures/rates.ts";
@@ -45,9 +46,9 @@ describe("FIXTURE_ANCHORS / resolveAnchor", () => {
 // ---------- properties ----------
 
 describe("FIXTURE_PROPERTIES", () => {
-  it("has 35-50 properties", () => {
+  it("has 35-70 properties (Slice 2 adds Singapore, Dubai and London)", () => {
     expect(FIXTURE_PROPERTIES.length).toBeGreaterThanOrEqual(35);
-    expect(FIXTURE_PROPERTIES.length).toBeLessThanOrEqual(50);
+    expect(FIXTURE_PROPERTIES.length).toBeLessThanOrEqual(70);
   });
 
   it("has unique property ids", () => {
@@ -69,9 +70,9 @@ describe("FIXTURE_PROPERTIES", () => {
     expect(ratio).toBeLessThan(0.85);
   });
 
-  it("only uses the three allowed cityTier values", () => {
+  it("only uses the allowed cityTier values (international properties are 'global')", () => {
     for (const p of FIXTURE_PROPERTIES) {
-      expect(["tier1", "tier2", "metro"]).toContain(p.cityTier);
+      expect(["tier1", "tier2", "metro", "global"]).toContain(p.cityTier);
     }
   });
 
@@ -166,24 +167,20 @@ describe("ratesFor component sums", () => {
     }
   });
 
-  it("includes a 12% GST component and a service fee on some rates", () => {
+  it("charges Indian rates GST on the GST 2.0 slab for the tariff, with no service fee", () => {
+    // The 12% slab was removed on 22 Sep 2025: ≤₹1,000 → 0%, ≤₹7,500 → 5%, above → 18%.
     const query = queryFor("BKC", "2026-11-10", "2026-11-14");
-    let sawFee = false;
-    for (const property of FIXTURE_PROPERTIES) {
-      const rates = ratesFor(property, query, "fx-alpha");
-      for (const rate of rates) {
-        const tax = rate.components.find((c) => c.kind === "tax");
-        expect(tax).toBeDefined();
-        const base = rate.components.find((c) => c.kind === "base")!;
-        // GST is rounded to whole rupees PER NIGHT and then multiplied by nights,
-        // so that per-night figures are real money (no "₹6,581.46/night").
-        const basePerNight = base.amount.minor / rate.nights;
-        const expectedPerNight = Math.round((basePerNight * 0.12) / 100) * 100;
-        expect(tax!.amount.minor).toBe(expectedPerNight * rate.nights);
-        if (rate.components.some((c) => c.kind === "fee")) sawFee = true;
+    const indian = FIXTURE_PROPERTIES.filter((p) => p.countryCode === "IN");
+    expect(indian.length).toBeGreaterThan(0);
+    for (const property of indian) {
+      for (const rate of ratesFor(property, query, "fx-alpha")) {
+        expect(rate.components.map((c) => c.kind)).toEqual(["base", "tax"]);
+        const expected = gstForStay(rate.tariffPerNight, rate.nights);
+        const tax = rate.components[1];
+        expect(tax?.label).toContain(`${expected.ratePercent}%`);
+        expect(tax?.amount.minor).toBe(expected.tax.minor);
       }
     }
-    expect(sawFee).toBe(true);
   });
 
   it("has a realistic mix of non-refundable rates (~35%)", () => {

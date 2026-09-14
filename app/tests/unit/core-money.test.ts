@@ -1,5 +1,7 @@
 import {
   CurrencyMismatchError,
+  absMoney,
+  isZeroMoney,
   addMoney,
   compareMoney,
   formatMoney,
@@ -59,6 +61,17 @@ describe("arithmetic", () => {
     expect(compareMoney(money(2, "INR"), money(2, "INR"))).toBe(0);
   });
 
+  it("takes a magnitude without changing the currency", () => {
+    expect(absMoney(money(-120000, "INR"))).toEqual(money(120000, "INR"));
+    expect(absMoney(money(120000, "INR"))).toEqual(money(120000, "INR"));
+  });
+
+  it("recognises exactly zero", () => {
+    expect(isZeroMoney(money(0, "INR"))).toBe(true);
+    expect(isZeroMoney(money(1, "INR"))).toBe(false);
+    expect(isZeroMoney(money(-1, "INR"))).toBe(false);
+  });
+
   it("throws CurrencyMismatchError rather than mixing currencies", () => {
     const inr = money(100, "INR");
     const usd = money(100, "USD");
@@ -102,8 +115,17 @@ describe("formatMoney — other currencies group Western-style", () => {
     expect(formatMoney(money(124000, "AED"))).toBe("AED 1,240");
   });
 
-  it("falls back to the ISO code for an unknown currency", () => {
-    expect(formatMoney(money(124000, "JPY"))).toBe("JPY 1,240");
+  it("falls back to the ISO code for a currency without a symbol", () => {
+    // Slice 2 changed this: JPY has no minor unit, so 124000 minor is ¥124,000, not ¥1,240.
+    expect(formatMoney(money(124000, "JPY"))).toBe("JPY 124,000");
+    expect(formatMoney(money(124000, "XYZ"))).toBe("XYZ 1,240");
+  });
+
+  it("splits minor units by the currency's exponent", () => {
+    expect(formatMoney(money(1234567, "BHD"))).toBe("BHD 1,234.567");
+    expect(formatMoney(money(1234500, "BHD"))).toBe("BHD 1,234.500");
+    expect(formatMoney(money(1234000, "BHD"))).toBe("BHD 1,234");
+    expect(formatMoney(money(1473, "JPY"), { decimals: true })).toBe("JPY 1,473");
   });
 
   it("groups in threes, not pairs", () => {
